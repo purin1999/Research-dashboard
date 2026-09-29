@@ -2,7 +2,40 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-29T16:48:41.432Z"
+    "updated": "2026-09-29T17:04:16.322Z"
   },
-  "projects": []
+  "projects": [
+    {
+      "id": "p_cc7prf6gw0",
+      "title": "In-situ DLS measurement paper",
+      "description": "",
+      "status": "ongoing",
+      "color": "#ec4899",
+      "stages": []
+    },
+    {
+      "id": "p_n1dpfy7tf2",
+      "title": "IFT estimation from slug flow",
+      "description": "",
+      "status": "ongoing",
+      "color": "#8b5cf6",
+      "stages": []
+    },
+    {
+      "id": "p_9ccscq9h81",
+      "title": "AgNP production scaling-up",
+      "description": "",
+      "status": "ongoing",
+      "color": "#8b5cf6",
+      "stages": []
+    },
+    {
+      "id": "p_1ejh20d1z8",
+      "title": "COSMO vacancy paper",
+      "description": "Collabs with Murakami sensei",
+      "status": "ongoing",
+      "color": "#14b8a6",
+      "stages": []
+    }
+  ]
 }
