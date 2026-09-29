@@ -47,7 +47,9 @@ site within about a minute.
 3. **Open the site in edit mode on your iPhone**: <https://purin1999.github.io/Research-dashboard/?admin>
    - Tap **✎ Edit**, then **⚙︎** (Settings), paste the token and check the fields read user `purin1999`,
      repository `Research-dashboard`, branch `main`, then Save.
-   - In Safari, tap **Share → Add to Home Screen** so the dashboard opens like an app.
+   - In Safari, tap **Share → Add to Home Screen** so the dashboard opens like an app. The Home Screen app
+     keeps its own storage, so the first time you open it, tap **Owner sign-in** at the bottom of the page
+     and paste your token.
    - Do the same on any other device you want to edit from.
 4. **Share the plain address**, <https://purin1999.github.io/Research-dashboard/> (without `?admin`), with anyone who wants to follow your progress. They can
    only view.
