@@ -3,6 +3,10 @@
 A dashboard for tracking research progress. It's a static web app that needs no server or build step. It is
 hosted free on GitHub Pages and designed for iPhone, and visitors can look but not edit.
 
+- **Live dashboard (view only):** <https://purin1999.github.io/Research-dashboard/>
+- **Edit mode (owner):** <https://purin1999.github.io/Research-dashboard/?admin>
+- **Repository:** <https://github.com/purin1999/Research-dashboard>
+
 - **Dashboard**: every ongoing project with a progress bar, what's next, and what still needs an update.
 - **Project page**: tap a project to see its stages. Each stage has an action name, experiment conditions
   (Condition 1, 2, 3, …), a schedule, notes and a comment.
@@ -34,17 +38,18 @@ site within about a minute.
 
 1. **Turn on GitHub Pages**: go to *Settings → Pages → Build and deployment*, choose *Deploy from a branch*, pick
    branch `main` and folder `/ (root)`, then save. The site will be at
-   `https://<your-user>.github.io/<repo>/`.
+   <https://purin1999.github.io/Research-dashboard/>.
    (GitHub Pages on a free account needs a **public** repository.)
 2. **Create an access token** for publishing:
    <https://github.com/settings/personal-access-tokens/new>
-   - *Repository access*: **Only select repositories**, then pick this repo
+   - *Repository access*: **Only select repositories**, then pick `purin1999/Research-dashboard`
    - *Permissions → Repository permissions → Contents*: **Read and write**
-3. **Open the site in edit mode on your iPhone**: `https://<your-user>.github.io/<repo>/?admin`
-   - Tap **✎ Edit**, then **⚙︎** (Settings), paste the token and check that user/repo/branch are correct, then Save.
+3. **Open the site in edit mode on your iPhone**: <https://purin1999.github.io/Research-dashboard/?admin>
+   - Tap **✎ Edit**, then **⚙︎** (Settings), paste the token and check the fields read user `purin1999`,
+     repository `Research-dashboard`, branch `main`, then Save.
    - In Safari, tap **Share → Add to Home Screen** so the dashboard opens like an app.
    - Do the same on any other device you want to edit from.
-4. **Share the plain address** (without `?admin`) with anyone who wants to follow your progress. They can
+4. **Share the plain address**, <https://purin1999.github.io/Research-dashboard/> (without `?admin`), with anyone who wants to follow your progress. They can
    only view.
 
 > The token is stored only in your own browser (localStorage) and is sent only to `api.github.com`.
