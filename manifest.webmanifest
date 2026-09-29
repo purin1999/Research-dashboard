@@ -1,7 +1,6 @@
 {
   "name": "Research Progress",
   "short_name": "Research",
-  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f6f7fb",

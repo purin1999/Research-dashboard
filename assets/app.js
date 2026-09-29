@@ -659,7 +659,7 @@ function render() {
   if (wk) wk.scrollTop = scroll ?? Math.max(0, (Math.min(new Date().getHours(), 16) - 1) * HOUR_H - 20) ;
 
   $('#foot').innerHTML = `<span>${meta.updated ? `Last updated ${esc(new Date(meta.updated).toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' }))}` : ''}</span>
-    <span>${state.owner ? (state.edit ? 'Editing on this device' : 'Owner device') : 'View only'}</span>`;
+    <span>${state.owner ? (state.edit ? 'Editing on this device' : 'Owner device') : 'View only · <a href="#" data-act="owner-signin">Owner sign-in</a>'}</span>`;
 }
 
 // ---------------------------------------------------------------- modal / toast
@@ -923,6 +923,48 @@ function openSettings(note = '') {
   });
 }
 
+// Lets the owner unlock editing without the ?admin URL (e.g. in a Home Screen
+// web app, which has its own storage and opens the manifest start URL).
+// A token that can read the repository through the API is the proof of ownership.
+function openOwnerSignIn() {
+  const g = state.gh;
+  openModal({
+    title: 'Owner sign-in',
+    body: `<form id="own-form" autocomplete="off">
+      <p class="muted small" style="margin-top:0">Paste your GitHub access token to edit on this device. Visitors don't need this; they can only view.</p>
+      <div class="grid2">
+        <label class="field"><span>GitHub user / org</span><input type="text" name="owner" value="${esc(g.owner)}" autocapitalize="off" spellcheck="false" required></label>
+        <label class="field"><span>Repository</span><input type="text" name="repo" value="${esc(g.repo)}" autocapitalize="off" spellcheck="false" required></label>
+      </div>
+      <label class="field"><span>Access token</span><input type="password" name="token" value="${esc(g.token)}" placeholder="github_pat_…" autocapitalize="off" spellcheck="false" required></label>
+    </form>`,
+    footer: '<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="own-form">Sign in</button>',
+    onMount(m) {
+      const form = $('#own-form', m);
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = $('.modal-foot [type=submit]', m);
+        btn.disabled = true; btn.textContent = 'Checking…';
+        const prev = state.gh;
+        state.gh = { ...prev, owner: form.owner.value.trim(), repo: form.repo.value.trim(), token: form.token.value.trim() };
+        try {
+          const { data, sha } = await ghGet();
+          store.set(KEY.gh, state.gh);
+          state.owner = true; state.edit = true;
+          store.set(KEY.owner, true); store.set(KEY.edit, true);
+          state.data = normalize(data); state.sha = sha; state.dirty = false; saveDraft();
+          closeModal(); render();
+          toast('Signed in ✓  You can edit on this device now.', 3500);
+        } catch (err) {
+          state.gh = prev;
+          btn.disabled = false; btn.textContent = 'Sign in';
+          toast(err.status === 401 ? 'That token was not accepted by GitHub' : err.status === 404 ? 'Repository not found, or the token has no access to it' : `Sign-in failed: ${err.message}`, 5000);
+        }
+      });
+    },
+  });
+}
+
 function duplicateStage(id) {
   const f = findStage(id); if (!f) return;
   const copy = { ...structuredClone(f.s), id: uid('s'), name: /\(repeat\)$/.test(f.s.name) ? f.s.name : `${f.s.name} (repeat)`, outcome: null, comment: '', date: '', endDate: '' };
@@ -934,6 +976,7 @@ function duplicateStage(id) {
 
 // ---------------------------------------------------------------- events
 const actions = {
+  'owner-signin'() { openOwnerSignIn(); },
   'toggle-edit'() { state.edit = !state.edit; store.set(KEY.edit, state.edit); render(); if (state.edit && !ghReady()) toast('Tip: connect GitHub in ⚙︎ Settings to publish changes', 4000); },
   publish,
   discard() {
