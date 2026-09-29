@@ -140,6 +140,13 @@ function findStage(id) {
 }
 const findProject = (id) => state.data.projects.find((p) => p.id === id);
 
+// Projects grouped by colour label, in the colour picker's order; projects with
+// the same colour keep the order they were created in (Array#sort is stable).
+function byColor(list = state.data.projects) {
+  const rank = (c) => { const i = COLORS.indexOf(String(c).toLowerCase()); return i < 0 ? COLORS.length : i; };
+  return [...list].sort((a, b) => rank(a.color) - rank(b.color));
+}
+
 function allItems(filter = () => true) {
   const out = [];
   for (const p of state.data.projects) for (const s of p.stages) if (filter(p, s)) out.push({ p, s, st: statusOf(s), r: stageRange(s) });
@@ -263,7 +270,7 @@ const stamp = () => ymd(new Date());
 
 function scopeProjects(scope) {
   if (scope && scope !== 'all') { const p = findProject(scope); return p ? [p] : []; }
-  return state.data.projects;
+  return byColor();
 }
 function scopeName(scope) { const p = scope && scope !== 'all' ? findProject(scope) : null; return p ? slug(p.title) : 'research-progress'; }
 
@@ -371,7 +378,8 @@ const legend = () => `<div class="legend">${['upcoming', 'done', 'failed', 'over
 
 // ---------------------------------------------------------------- views
 function viewDashboard() {
-  const { meta, projects } = state.data;
+  const { meta } = state.data;
+  const projects = byColor();
   const now = new Date();
   const ongoing = projects.filter((p) => p.status === 'ongoing');
   const others = projects.filter((p) => p.status !== 'ongoing');
@@ -495,7 +503,7 @@ function viewCalendar() {
     title = 'Schedule';
     body = agendaView(items);
   }
-  const opts = state.data.projects.map((p) => `<option value="${esc(p.id)}" ${c.project === p.id ? 'selected' : ''}>${esc(p.title)}</option>`).join('');
+  const opts = byColor().map((p) => `<option value="${esc(p.id)}" ${c.project === p.id ? 'selected' : ''}>${esc(p.title)}</option>`).join('');
   return `
     <div class="cal-toolbar">
       <h2>${esc(title)}</h2>
@@ -768,7 +776,7 @@ function openStageForm({ id, pid, date, start } = {}) {
   openModal({
     title: found ? 'Edit stage' : 'New stage',
     body: `<form id="st-form" autocomplete="off">
-      <label class="field"><span>Project</span><select name="pid">${state.data.projects.map((p) => `<option value="${esc(p.id)}" ${p.id === projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('')}</select></label>
+      <label class="field"><span>Project</span><select name="pid">${byColor().map((p) => `<option value="${esc(p.id)}" ${p.id === projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('')}</select></label>
       <label class="field"><span>Action name</span><input type="text" name="name" required value="${esc(s.name)}" placeholder="e.g. BMP batch test set-up"></label>
       <div class="field"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Experiment conditions</span>
         <div id="conds">${conds.map(condRow).join('')}</div>
@@ -835,6 +843,7 @@ function openProjectForm(id) {
       <label class="field"><span>Status</span><select name="status">${['ongoing', 'paused', 'completed'].map((v) => `<option value="${v}" ${(p?.status || 'ongoing') === v ? 'selected' : ''}>${v[0].toUpperCase() + v.slice(1)}</option>`).join('')}</select></label>
       <div class="field"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Colour</span>
         <div class="swatches">${COLORS.map((c) => `<label><input type="radio" name="color" value="${c}" ${c === color ? 'checked' : ''}><span style="background:${c}"></span></label>`).join('')}</div></div>
+      <p class="help" style="margin-top:6px">Projects with the same colour are grouped together on the dashboard.</p>
     </form>`,
     footer: `${p ? `<button class="btn danger" data-act="delete-project" data-id="${p.id}">Delete</button><span class="spacer"></span>` : ''}<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="pj-form">${p ? 'Save' : 'Create'}</button>`,
     onMount(m) {
