@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-29T16:09:38.175Z"
+    "updated": "2026-09-29T16:28:25.215Z"
   },
   "projects": [
     {
@@ -75,8 +75,9 @@
           "start": "10:00",
           "end": "15:00",
           "allDay": false,
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-29T16:28:22.532Z"
         },
         {
           "id": "s_ad05",
