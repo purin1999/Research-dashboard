@@ -95,6 +95,9 @@ h3 { font-size: 1rem; }
 
 @media (max-width: 720px) {
   :root { --tabbar-h: 60px; }
+  /* A backdrop-filter makes the header the containing block for position:fixed
+     children, which would pin the tab bar to the header instead of the screen. */
+  .topbar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
   .tabs {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0;
     background: color-mix(in srgb, var(--surface) 92%, transparent);
