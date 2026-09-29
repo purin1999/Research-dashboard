@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Research progress dashboard: projects, stages, experiment conditions and schedule.">
+  <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#11141b" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Research">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>Research Progress</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script type="module" src="assets/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/">
+        <img src="assets/icon.svg" alt="" width="28" height="28">
+        <span id="brand-title">Research Progress</span>
+      </a>
+      <nav class="tabs" aria-label="Main">
+        <a href="#/" data-tab="dashboard"><span class="tab-ico" aria-hidden="true">▦</span><span>Dashboard</span></a>
+        <a href="#/calendar" data-tab="calendar"><span class="tab-ico" aria-hidden="true">📅</span><span>Calendar</span></a>
+        <button type="button" data-act="export" data-tab="export"><span class="tab-ico" aria-hidden="true">⇪</span><span>Export</span></button>
+      </nav>
+      <div class="top-actions" id="top-actions"></div>
+    </div>
+  </header>
+  <div id="banner"></div>
+  <main id="view" class="container" tabindex="-1">
+    <p class="muted loading">Loading…</p>
+  </main>
+  <footer class="container foot no-print" id="foot"></footer>
+  <div id="modal-root"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript>This dashboard needs JavaScript enabled.</noscript>
+</body>
+</html>
