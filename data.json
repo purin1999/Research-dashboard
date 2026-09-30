@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T14:22:07.310Z"
+    "updated": "2026-09-30T14:25:41.287Z"
   },
   "projects": [
     {
@@ -156,6 +156,19 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-09-30T14:20:55.276Z"
+        },
+        {
+          "id": "s_zbqbi65tl2",
+          "name": "Progression update",
+          "notes": "Adding the past progression since August.\nAdding the future progression until October.",
+          "conditions": [],
+          "date": "2026-10-01",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "type": "research"
