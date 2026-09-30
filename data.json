@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T14:18:46.289Z"
+    "updated": "2026-09-30T14:19:44.446Z"
   },
   "projects": [
     {
@@ -120,7 +120,7 @@
           "name": "Research progression application #2",
           "notes": "Git environment set-up (linking to Claude)\nCreation of application\nLaunch web app",
           "conditions": [],
-          "date": "",
+          "date": "2026-09-29",
           "endDate": "",
           "allDay": true,
           "start": "",
