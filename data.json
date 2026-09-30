@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T08:56:53.899Z"
+    "updated": "2026-09-30T09:23:41.786Z"
   },
   "projects": [
     {
@@ -20,7 +20,22 @@
       "description": "",
       "status": "ongoing",
       "color": "#8b5cf6",
-      "stages": [],
+      "stages": [
+        {
+          "id": "s_guy5uxdjdd",
+          "name": "Modification on slug equipment",
+          "notes": "Adjusting focus distance.\nChanging BG paper.",
+          "conditions": [],
+          "date": "2026-08-17",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T09:23:09.033Z"
+        }
+      ],
       "type": "research"
     },
     {
@@ -214,6 +229,34 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-09-30T08:54:19.163Z"
+        },
+        {
+          "id": "s_6pecbks8gn",
+          "name": "Conference slide",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-09-08",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T09:06:31.877Z"
+        },
+        {
+          "id": "s_yd7qaiv8mn",
+          "name": "Conference slide editing",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-09-09",
+          "endDate": "2026-09-10",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T09:08:52.815Z"
         }
       ],
       "type": "research"
@@ -281,6 +324,30 @@
           "kind": "holiday",
           "outcome": null,
           "comment": ""
+        }
+      ]
+    },
+    {
+      "id": "p_7gilutjwgl",
+      "title": "TACMI event",
+      "description": "",
+      "type": "research",
+      "status": "ongoing",
+      "color": "#f97316",
+      "stages": [
+        {
+          "id": "s_6c9h9oll3b",
+          "name": "企業紹介イベント",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-09-25",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T09:01:20.630Z"
         }
       ]
     }
