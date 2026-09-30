@@ -18,6 +18,10 @@ hosted free on GitHub Pages and designed for iPhone, and visitors can look but n
   - 🟥 **Red**: not completed as planned (a comment explaining why is required)
   - 🟧 **Orange, dashed**: the planned date has passed and the stage is waiting for you to update it
   - ⬜ **Grey**: planned later
+  - 🤍 **White**: holidays and leave (public holidays, personal appointments, university closed). These never
+    ask for a status update and don't count toward progress.
+- **Holiday & leave**: tap **＋ Day off** on the dashboard or the calendar. The first time, a "Holidays & leave"
+  project is created for you, or you can choose *Type → Holiday & leave* when creating a project.
 - **Export** (⇪ tab): a printable report you can save as PDF, a spreadsheet (`.csv`), a calendar file (`.ics` for
   Google or Apple Calendar) and a full data backup (`.json`). You can export one project or everything.
 
