@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T08:11:01.898Z"
+    "updated": "2026-09-30T08:37:22.740Z"
   },
   "projects": [
     {
@@ -11,7 +11,8 @@
       "description": "",
       "status": "ongoing",
       "color": "#ec4899",
-      "stages": []
+      "stages": [],
+      "type": "research"
     },
     {
       "id": "p_n1dpfy7tf2",
@@ -19,7 +20,8 @@
       "description": "",
       "status": "ongoing",
       "color": "#8b5cf6",
-      "stages": []
+      "stages": [],
+      "type": "research"
     },
     {
       "id": "p_9ccscq9h81",
@@ -27,7 +29,8 @@
       "description": "",
       "status": "ongoing",
       "color": "#8b5cf6",
-      "stages": []
+      "stages": [],
+      "type": "research"
     },
     {
       "id": "p_1ejh20d1z8",
@@ -35,7 +38,8 @@
       "description": "Collabs with Murakami sensei",
       "status": "ongoing",
       "color": "#14b8a6",
-      "stages": []
+      "stages": [],
+      "type": "research"
     },
     {
       "id": "p_75k4f76d8t",
@@ -58,7 +62,8 @@
           "comment": "",
           "updatedAt": "2026-09-30T07:55:17.472Z"
         }
-      ]
+      ],
+      "type": "research"
     },
     {
       "id": "p_gzbc7ca8w9",
@@ -81,7 +86,8 @@
           "comment": "",
           "updatedAt": "2026-09-30T07:57:23.351Z"
         }
-      ]
+      ],
+      "type": "research"
     },
     {
       "id": "p_wi98b4eh03",
@@ -118,30 +124,8 @@
           "comment": "Ready for conference",
           "updatedAt": "2026-09-30T08:05:08.658Z"
         }
-      ]
-    },
-    {
-      "id": "p_cnvjkepwo6",
-      "title": "Holiday and Personal leave",
-      "description": "",
-      "status": "completed",
-      "color": "#64748b",
-      "stages": [
-        {
-          "id": "s_34vbwtshq0",
-          "name": "大学一斉休業",
-          "notes": "",
-          "conditions": [],
-          "date": "2026-08-10",
-          "endDate": "2026-08-12",
-          "allDay": true,
-          "start": "",
-          "end": "",
-          "outcome": "done",
-          "comment": "",
-          "updatedAt": "2026-09-30T08:10:48.439Z"
-        }
-      ]
+      ],
+      "type": "research"
     }
   ]
 }
