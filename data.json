@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T14:25:41.287Z"
+    "updated": "2026-09-30T14:44:31.307Z"
   },
   "projects": [
     {
@@ -22,6 +22,54 @@
       "color": "#8b5cf6",
       "stages": [
         {
+          "id": "s_g2rs4nh3k9",
+          "name": "Slug data extraction",
+          "notes": "Image processing into quantitative data",
+          "conditions": [
+            "Water/Hexane + lecithin 0.0% w/w",
+            "Water/Hexane + lecithin 0.5% w/w",
+            "Water/Hexane + lecithin 1.0% w/w",
+            "Water/Hexane + lecithin 1.5% w/w",
+            "Water/Hexane + lecithin 2.0% w/w"
+          ],
+          "date": "",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T14:33:47.266Z"
+        },
+        {
+          "id": "s_mll72ej27g",
+          "name": "Physical model fitting",
+          "notes": "Fitted the quantitative data to available equation",
+          "conditions": [],
+          "date": "",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "failed",
+          "comment": "The effect of sheer force of tube wall might not be significant at current conditions.\nThe value of curvature seems to be imprecise.",
+          "updatedAt": "2026-09-30T14:42:49.358Z"
+        },
+        {
+          "id": "s_bjpvj3olum",
+          "name": "Physical model fitting (repeat)",
+          "notes": "Plot the graph against exp. conditions to see only the trend of data.\nIFT values were obtained from theoretical model.",
+          "conditions": [],
+          "date": "",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "The descending trend was observed both on IFT and characteristic length of slug.",
+          "updatedAt": "2026-09-30T14:42:06.935Z"
+        },
+        {
           "id": "s_guy5uxdjdd",
           "name": "Modification on slug equipment",
           "notes": "Adjusting focus distance.\nChanging BG paper.",
@@ -32,8 +80,8 @@
           "start": "",
           "end": "",
           "outcome": "done",
-          "comment": "",
-          "updatedAt": "2026-09-30T09:23:09.033Z"
+          "comment": "The focus was adjusted from 4cm to 5cm (minimum value mentioned by the provider)\nThe BG was changed to black color to generate more contrast)",
+          "updatedAt": "2026-09-30T14:44:17.549Z"
         }
       ],
       "type": "research"
