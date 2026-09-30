@@ -13,7 +13,16 @@ const STATUS = {
   overdue:     { label: 'Awaiting update', icon: '!' },
   planned:     { label: 'Planned',         icon: '○' },
   unscheduled: { label: 'Not scheduled',   icon: '–' },
+  off:         { label: 'Day off',         icon: '🏖' },
 };
+// Entries of a "Holiday & leave" project: days off that never ask for a result.
+const LEAVE_KINDS = {
+  holiday:  { label: 'Public holiday',    icon: '🎌' },
+  personal: { label: 'Personal leave',    icon: '👤' },
+  closed:   { label: 'University closed', icon: '🏫' },
+  other:    { label: 'Day off',           icon: '🏖' },
+};
+const LEAVE_COLOR = '#ffffff';
 const KEY = { gh: 'rpd.gh', draft: 'rpd.draft', owner: 'rpd.owner', edit: 'rpd.edit', cal: 'rpd.cal' };
 
 // ---------------------------------------------------------------- utilities
@@ -62,6 +71,7 @@ function normalize(d) {
     p.description ??= '';
     p.status ||= 'ongoing';
     p.color ||= COLORS[0];
+    p.type = p.type === 'leave' ? 'leave' : 'research';
     p.stages = Array.isArray(p.stages) ? p.stages : [];
     for (const s of p.stages) {
       s.id ||= uid('s');
@@ -72,6 +82,7 @@ function normalize(d) {
       s.allDay = !!s.allDay || !s.start;
       if (!['done', 'failed'].includes(s.outcome)) s.outcome = null;
       s.comment ??= '';
+      if (p.type === 'leave') { s.outcome = null; if (!LEAVE_KINDS[s.kind]) s.kind = 'other'; }
     }
   }
   return data;
@@ -98,6 +109,7 @@ function stageRange(s) {
 function computeStatuses(now = new Date()) {
   const map = new Map();
   for (const p of state.data.projects) {
+    if (isLeave(p)) { for (const s of p.stages) map.set(s.id, 'off'); continue; }
     let next = null; let nextStart = Infinity;
     for (const s of p.stages) {
       let st;
@@ -117,6 +129,12 @@ function computeStatuses(now = new Date()) {
   return map;
 }
 const statusOf = (s) => state.statuses.get(s.id) || 'planned';
+const isLeave = (p) => p?.type === 'leave';
+const projColor = (p) => (isLeave(p) ? LEAVE_COLOR : p.color);
+// Label + icon for a stage's status; days off show their kind instead.
+function stInfo(s, st = statusOf(s)) {
+  return st === 'off' ? (LEAVE_KINDS[s.kind] || LEAVE_KINDS.other) : STATUS[st];
+}
 
 function progressOf(p) {
   const c = { total: p.stages.length, done: 0, failed: 0, overdue: 0 };
@@ -143,8 +161,8 @@ const findProject = (id) => state.data.projects.find((p) => p.id === id);
 // Projects grouped by colour label, in the colour picker's order; projects with
 // the same colour keep the order they were created in (Array#sort is stable).
 function byColor(list = state.data.projects) {
-  const rank = (c) => { const i = COLORS.indexOf(String(c).toLowerCase()); return i < 0 ? COLORS.length : i; };
-  return [...list].sort((a, b) => rank(a.color) - rank(b.color));
+  const rank = (p) => { if (isLeave(p)) return COLORS.length + 1; const i = COLORS.indexOf(String(p.color).toLowerCase()); return i < 0 ? COLORS.length : i; };
+  return [...list].sort((a, b) => rank(a) - rank(b));
 }
 
 function allItems(filter = () => true) {
@@ -288,7 +306,7 @@ function exportCSV(scope) {
   const rows = [head];
   for (const p of projects) {
     p.stages.forEach((s, i) => {
-      const row = [p.title, p.status, i + 1, s.name, s.date, s.endDate || s.date, s.allDay ? '' : s.start, s.allDay ? '' : s.end, STATUS[statusOf(s)].label, s.comment, s.notes];
+      const row = [p.title, p.status, i + 1, s.name, s.date, s.endDate || s.date, s.allDay ? '' : s.start, s.allDay ? '' : s.end, stInfo(s).label, s.comment, s.notes];
       for (let c = 0; c < maxC; c++) row.push(s.conditions[c] || '');
       rows.push(row);
     });
@@ -307,7 +325,7 @@ function exportICS(scope) {
     for (const s of p.stages) {
       const r = stageRange(s);
       if (!r) continue;
-      const st = STATUS[statusOf(s)];
+      const st = stInfo(s);
       const desc = [`Project: ${p.title}`, `Status: ${st.label}`, ...s.conditions.map((c, i) => `Condition ${i + 1}: ${c}`), s.notes && `Notes: ${s.notes}`, s.comment && `Comment: ${s.comment}`].filter(Boolean).join('\n');
       lines.push('BEGIN:VEVENT', `UID:${s.id}@research-progress`, `DTSTAMP:${utc}`);
       if (s.allDay) lines.push(`DTSTART;VALUE=DATE:${dd(r.start)}`, `DTEND;VALUE=DATE:${dd(addDays(startOfDay(r.end), 1))}`);
@@ -348,7 +366,7 @@ function parseRoute() {
 }
 
 // ---------------------------------------------------------------- rendering helpers
-const badge = (st) => `<span class="badge st-${st}">${STATUS[st].icon} ${STATUS[st].label}</span>`;
+const badge = (st, s) => { const i = s ? stInfo(s, st) : STATUS[st]; return `<span class="badge st-${st}">${i.icon} ${esc(i.label)}</span>`; };
 
 function pbar(c, lg = false) {
   const w = (n) => (c.counted > 0 ? (n / c.counted) * 100 : 0);
@@ -368,18 +386,20 @@ function outcomeButtons(s) {
 
 function miniRow({ p, s, st }, withActions = false) {
   return `<div class="mini st-${st}" data-act="open-stage" data-id="${s.id}">
-    <span class="dot" style="background:${esc(p.color)}"></span>
+    <span class="dot" style="background:${esc(projColor(p))}"></span>
     <div class="body"><div class="t">${esc(s.name)}</div><div class="s">${esc(p.title)} · ${esc(fmtWhen(s))}</div></div>
-    ${withActions && state.edit ? `<div class="acts">${outcomeButtons(s)}</div>` : badge(st)}
+    ${withActions && state.edit ? `<div class="acts">${outcomeButtons(s)}</div>` : badge(st, s)}
   </div>`;
 }
 
-const legend = () => `<div class="legend">${['upcoming', 'done', 'failed', 'overdue', 'planned'].map((k) => `<span class="st-${k}"><i></i>${STATUS[k].label}</span>`).join('')}</div>`;
+const legend = () => `<div class="legend">${['upcoming', 'done', 'failed', 'overdue', 'planned', 'off'].map((k) => `<span class="st-${k}"><i></i>${STATUS[k].label}</span>`).join('')}</div>`;
 
 // ---------------------------------------------------------------- views
 function viewDashboard() {
   const { meta } = state.data;
-  const projects = byColor();
+  const all = byColor();
+  const projects = all.filter((p) => !isLeave(p));
+  const leave = all.filter(isLeave);
   const now = new Date();
   const ongoing = projects.filter((p) => p.status === 'ongoing');
   const others = projects.filter((p) => p.status !== 'ongoing');
@@ -405,12 +425,12 @@ function viewDashboard() {
     <div class="page-head">
       <div><h1>${esc(meta.title)}</h1>${meta.subtitle ? `<div class="sub">${esc(meta.subtitle)}</div>` : ''}</div>
       <span class="spacer"></span>
-      ${state.edit ? '<button class="btn primary" data-act="new-project">＋ New project</button>' : ''}
+      ${state.edit ? '<button class="btn" data-act="new-leave">＋ Day off</button><button class="btn primary" data-act="new-project">＋ New project</button>' : ''}
     </div>
     <div class="stats">
       <div class="card stat"><div class="k">Ongoing projects</div><div class="v">${ongoing.length}</div></div>
       <div class="card stat"><div class="k">Stages completed</div><div class="v">${totals.done}<small> / ${totals.counted}</small></div></div>
-      <div class="card stat"><div class="k">Next 7 days</div><div class="v">${soon.filter((x) => x.r.start <= in7).length}</div></div>
+      <div class="card stat"><div class="k">Next 7 days</div><div class="v">${soon.filter((x) => x.r.start <= in7 && x.st !== 'off').length}</div></div>
       <div class="card stat ${overdue.length ? 'warn' : ''}"><div class="k">Awaiting update</div><div class="v">${overdue.length}</div></div>
     </div>
 
@@ -424,16 +444,41 @@ function viewDashboard() {
     ${soon.length ? `<div class="section-title">Coming up · next 14 days</div><div class="mini-list">${soon.slice(0, 8).map((x) => miniRow(x)).join('')}</div>` : ''}
 
     ${others.length ? `<div class="section-title">Paused &amp; completed <span class="count">${others.length}</span></div><div class="projects">${others.map(card).join('')}</div>` : ''}
+
+    ${leave.length ? `<div class="section-title">Holidays &amp; leave</div><div class="projects">${leave.map(leaveCard).join('')}</div>` : ''}
     <div style="margin-top:18px">${legend()}</div>`;
+}
+
+function leaveCard(p) {
+  const today0 = startOfDay(new Date());
+  const next = p.stages.map((s) => ({ s, r: stageRange(s) })).filter((x) => x.r && x.r.end >= today0).sort((a, b) => a.r.start - b.r.start);
+  return `<a class="card project-card leave-card" href="#/project/${encodeURIComponent(p.id)}" style="--pc:${LEAVE_COLOR}">
+    <h3>🏖 ${esc(p.title)}</h3>
+    ${p.description ? `<div class="desc">${esc(p.description)}</div>` : ''}
+    <div class="pc-foot">
+      ${next.length ? next.slice(0, 3).map(({ s }) => `<div class="next-chip tinted st-off"><span>${stInfo(s).icon}</span><div><div class="t">${esc(s.name)}</div><div>${esc(fmtWhen(s))}</div></div></div>`).join('')
+        : '<div class="muted small">No upcoming days off.</div>'}
+      ${next.length > 3 ? `<div class="muted small">+${next.length - 3} more</div>` : ''}
+    </div></a>`;
 }
 
 function stageCard(p, s, i) {
   const st = statusOf(s);
   const E = state.edit;
+  if (st === 'off') {
+    return `<li class="stage st-off" data-act="open-stage" data-id="${s.id}">
+    <div class="stage-num">${stInfo(s).icon}</div>
+    <div class="stage-main">
+      <div class="stage-top"><h3>${esc(s.name)}</h3>${badge(st, s)}</div>
+      <div class="when">🗓 ${esc(fmtWhen(s))}</div>
+      ${s.notes ? `<p class="notes">${esc(s.notes)}</p>` : ''}
+      ${E ? `<div class="stage-actions"><button class="btn sm" data-act="edit-stage" data-id="${s.id}">✎ Edit</button><button class="btn sm danger" data-act="delete-stage" data-id="${s.id}">Delete</button></div>` : ''}
+    </div></li>`;
+  }
   return `<li class="stage st-${st}" data-act="open-stage" data-id="${s.id}">
     <div class="stage-num">${s.outcome === 'done' ? '✓' : s.outcome === 'failed' ? '✕' : i + 1}</div>
     <div class="stage-main">
-      <div class="stage-top"><h3>${esc(s.name)}</h3>${badge(st)}</div>
+      <div class="stage-top"><h3>${esc(s.name)}</h3>${badge(st, s)}</div>
       <div class="when">🗓 ${esc(fmtWhen(s))}</div>
       ${s.notes ? `<p class="notes">${esc(s.notes)}</p>` : ''}
       ${s.conditions.length ? `<ol class="conds">${s.conditions.map((c, k) => `<li><b>Condition ${k + 1}</b><span>${esc(c)}</span></li>`).join('')}</ol>` : ''}
@@ -453,6 +498,7 @@ function stageCard(p, s, i) {
 function viewProject(id) {
   const p = findProject(id);
   if (!p) return '<div class="card empty">Project not found. <a href="#/">Back to dashboard</a></div>';
+  if (isLeave(p)) return viewLeave(p);
   const c = progressOf(p);
   return `
     <div class="crumbs"><a href="#/">← Dashboard</a></div>
@@ -471,6 +517,29 @@ function viewProject(id) {
     <div class="no-print" style="margin:-4px 0 6px">${legend()}</div>
     ${p.stages.length ? `<ol class="timeline">${p.stages.map((s, i) => stageCard(p, s, i)).join('')}</ol>`
       : `<div class="card empty">No stages yet.${state.edit ? `<br><button class="btn primary" data-act="new-stage" data-pid="${p.id}">＋ Add the first stage</button>` : ''}</div>`}`;
+}
+
+function viewLeave(p) {
+  // Days off are always shown in date order (unscheduled ones last).
+  const days = [...p.stages].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+  const today = ymd(new Date());
+  const upcoming = days.filter((s) => !s.date || (s.endDate || s.date) >= today);
+  const past = days.filter((s) => s.date && (s.endDate || s.date) < today);
+  const list = (xs) => `<ol class="timeline">${xs.map((s) => stageCard(p, s, 0)).join('')}</ol>`;
+  return `
+    <div class="crumbs"><a href="#/">← Dashboard</a></div>
+    <div class="card proj-head" style="--pc:#cbd5e1">
+      <div class="row" style="align-items:flex-start"><h1>🏖 ${esc(p.title)}</h1><span class="pill">Holiday &amp; leave</span></div>
+      <p class="muted" style="margin:6px 0 0;white-space:pre-wrap">${esc(p.description || 'Public holidays, personal appointments and days the university is closed. These never ask for a status update.')}</p>
+      <div class="row no-print" style="margin-top:14px">
+        ${state.edit ? `<button class="btn primary" data-act="new-stage" data-pid="${p.id}">＋ Add day off</button>
+          <button class="btn" data-act="edit-project" data-id="${p.id}">✎ Edit</button>` : ''}
+        <a class="btn" href="#/calendar" data-act="cal-project" data-id="${p.id}">📅 Calendar</a>
+      </div>
+    </div>
+    <div class="section-title">Upcoming <span class="count">${upcoming.length}</span></div>
+    ${upcoming.length ? list(upcoming) : `<div class="card empty">No upcoming days off.${state.edit ? `<br><button class="btn primary" data-act="new-stage" data-pid="${p.id}">＋ Add day off</button>` : ''}</div>`}
+    ${past.length ? `<div class="section-title">Past <span class="count">${past.length}</span></div>${list(past.reverse())}` : ''}`;
 }
 
 // ---- calendar
@@ -511,7 +580,7 @@ function viewCalendar() {
         : `<label class="check" style="margin:0"><input type="checkbox" data-act="cal-past" ${c.past ? 'checked' : ''}> Show past</label>`}
       <div class="seg" role="group" aria-label="Calendar view">${['month', 'week', 'agenda'].map((v) => `<button data-act="cal-view" data-v="${v}" class="${c.view === v ? 'on' : ''}">${v === 'agenda' ? 'List' : v[0].toUpperCase() + v.slice(1)}</button>`).join('')}</div>
       <select data-change="cal-project" aria-label="Filter by project"><option value="all">All projects</option>${opts}</select>
-      ${state.edit ? `<button class="btn sm primary" data-act="new-stage" data-date="${c.view === 'month' ? c.day : ymd(new Date())}">＋ Stage</button>` : ''}
+      ${state.edit ? `<button class="btn sm" data-act="new-leave" data-date="${c.view === 'month' ? c.day : ymd(new Date())}">＋ Day off</button><button class="btn sm primary" data-act="new-stage" data-date="${c.view === 'month' ? c.day : ymd(new Date())}">＋ Stage</button>` : ''}
     </div>
     ${body}
     <div style="margin-top:12px">${legend()}</div>`;
@@ -583,7 +652,7 @@ function weekView(first, n, items) {
     const blocks = evs.map((ev) => {
       const w = 100 / ev.ncol;
       return `<div class="ev st-${ev.st}" data-act="open-stage" data-id="${ev.s.id}" style="top:${(ev.a / 60) * HOUR_H}px;height:${Math.max(((ev.b - ev.a) / 60) * HOUR_H - 2, 20)}px;left:calc(${w * ev.col}% + 2px);width:calc(${w}% - 4px);right:auto">
-        <b><span class="pdot" style="background:${esc(ev.p.color)}"></span>${esc(ev.s.name)}</b>${esc(ev.s.start)}–${esc(ev.s.end || fromMin(ev.b))}</div>`;
+        <b><span class="pdot" style="background:${esc(projColor(ev.p))}"></span>${esc(ev.s.name)}</b>${esc(ev.s.start)}–${esc(ev.s.end || fromMin(ev.b))}</div>`;
     }).join('');
     const nowLine = key === today ? `<div class="now-line" style="top:${((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR_H}px"></div>` : '';
     return `<div class="wk-col ${key === today ? 'today' : ''}" data-act="cal-slot" data-date="${key}">${blocks}${nowLine}</div>`;
@@ -623,7 +692,7 @@ function viewReport(scope) {
         <div class="table-wrap"><table><thead><tr><th>#</th><th>Action</th><th>Schedule</th><th>Experiment conditions</th><th>Status</th><th>Comment</th></tr></thead><tbody>
         ${p.stages.map((s, i) => `<tr><td>${i + 1}</td><td><b>${esc(s.name)}</b>${s.notes ? `<div class="muted small">${esc(s.notes)}</div>` : ''}</td><td>${esc(fmtWhen(s))}</td>
           <td>${s.conditions.length ? `<ol>${s.conditions.map((cn) => `<li>${esc(cn)}</li>`).join('')}</ol>` : '—'}</td>
-          <td class="st st-${statusOf(s)}">${STATUS[statusOf(s)].icon} ${STATUS[statusOf(s)].label}</td><td>${esc(s.comment) || '—'}</td></tr>`).join('')}
+          <td class="st st-${statusOf(s)}">${stInfo(s).icon} ${esc(stInfo(s).label)}</td><td>${esc(s.comment) || '—'}</td></tr>`).join('')}
         </tbody></table></div></section>`;
     }).join('')}
   </div>`;
@@ -709,14 +778,16 @@ function openStage(id) {
   openModal({
     title: s.name,
     body: `<div class="stack">
-      <div class="row"><span class="mini" style="padding:0;background:none;border:0;cursor:auto"><span class="dot" style="background:${esc(p.color)}"></span></span><a href="#/project/${encodeURIComponent(p.id)}" data-close-nav>${esc(p.title)}</a><span class="spacer"></span>${badge(st)}</div>
+      <div class="row"><span class="mini" style="padding:0;background:none;border:0;cursor:auto"><span class="dot" style="background:${esc(projColor(p))}"></span></span><a href="#/project/${encodeURIComponent(p.id)}" data-close-nav>${esc(p.title)}</a><span class="spacer"></span>${badge(st, s)}</div>
       <div class="when" style="font-size:.95rem">🗓 ${esc(fmtWhen(s))}</div>
       ${s.notes ? `<p class="notes">${esc(s.notes)}</p>` : ''}
-      ${s.conditions.length ? `<div class="st-${st}"><ol class="conds">${s.conditions.map((c, k) => `<li><b>Condition ${k + 1}</b><span>${esc(c)}</span></li>`).join('')}</ol></div>` : '<p class="muted small">No experiment conditions listed.</p>'}
+      ${s.conditions.length ? `<div class="st-${st}"><ol class="conds">${s.conditions.map((c, k) => `<li><b>Condition ${k + 1}</b><span>${esc(c)}</span></li>`).join('')}</ol></div>` : st === 'off' ? '' : '<p class="muted small">No experiment conditions listed.</p>'}
       ${s.comment ? `<div class="st-${st}"><div class="comment"><b>${s.outcome === 'failed' ? 'Why it did not go as planned' : 'Comment'}</b>${esc(s.comment)}</div></div>` : ''}
       ${st === 'overdue' ? `<div class="needs-update"><strong>The planned date has passed — did it go as planned?</strong></div>` : ''}
     </div>`,
-    footer: E ? `<button class="btn danger" data-act="delete-stage" data-id="${s.id}">Delete</button><span class="spacer"></span>
+    footer: E && st === 'off' ? `<button class="btn danger" data-act="delete-stage" data-id="${s.id}">Delete</button><span class="spacer"></span>
+        <button class="btn primary" data-act="edit-stage" data-id="${s.id}">✎ Edit</button>`
+      : E ? `<button class="btn danger" data-act="delete-stage" data-id="${s.id}">Delete</button><span class="spacer"></span>
         ${s.outcome === 'failed' ? `<button class="btn" data-act="dup-stage" data-id="${s.id}">↻ Reschedule</button>` : ''}
         <button class="btn" data-act="edit-stage" data-id="${s.id}">✎ Edit</button>
         <button class="btn primary" data-act="outcome" data-id="${s.id}">Update result</button>`
@@ -725,7 +796,7 @@ function openStage(id) {
 }
 
 function openOutcome(id, preset) {
-  const f = findStage(id); if (!f) return;
+  const f = findStage(id); if (!f || isLeave(f.p)) return;
   const { s } = f;
   const initial = preset || s.outcome || 'done';
   openModal({
@@ -768,8 +839,9 @@ function openOutcome(id, preset) {
 
 function openStageForm({ id, pid, date, start } = {}) {
   const found = id ? findStage(id) : null;
-  const s = found ? found.s : { name: '', notes: '', conditions: [''], date: date || '', endDate: '', start: start || '', end: start ? fromMin(Math.min(toMin(start) + 120, 23 * 60 + 59)) : '', allDay: !start, outcome: null, comment: '' };
-  const projectId = found ? found.p.id : pid || (state.cal.project !== 'all' ? state.cal.project : state.data.projects.find((p) => p.status === 'ongoing')?.id || state.data.projects[0]?.id);
+  const s = found ? found.s : { name: '', notes: '', conditions: [''], date: date || '', endDate: '', start: start || '', end: start ? fromMin(Math.min(toMin(start) + 120, 23 * 60 + 59)) : '', allDay: !start, outcome: null, comment: '', kind: 'holiday' };
+  const research = state.data.projects.filter((p) => !isLeave(p));
+  const projectId = found ? found.p.id : pid || (state.cal.project !== 'all' ? state.cal.project : research.find((p) => p.status === 'ongoing')?.id || research[0]?.id || state.data.projects[0]?.id);
   if (!state.data.projects.length) { toast('Create a project first'); openProjectForm(); return; }
   const conds = s.conditions.length ? [...s.conditions] : [''];
   const condRow = (v, i) => `<div class="cond-row"><span class="lab">Condition ${i + 1}</span><textarea name="cond" rows="1" placeholder="e.g. 35 °C, pH 7, 3 replicates">${esc(v)}</textarea><button type="button" class="icon-btn" data-rm aria-label="Remove condition">✕</button></div>`;
@@ -777,8 +849,9 @@ function openStageForm({ id, pid, date, start } = {}) {
     title: found ? 'Edit stage' : 'New stage',
     body: `<form id="st-form" autocomplete="off">
       <label class="field"><span>Project</span><select name="pid">${byColor().map((p) => `<option value="${esc(p.id)}" ${p.id === projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('')}</select></label>
-      <label class="field"><span>Action name</span><input type="text" name="name" required value="${esc(s.name)}" placeholder="e.g. BMP batch test set-up"></label>
-      <div class="field"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Experiment conditions</span>
+      <label class="field leave-only"><span>Type of day off</span><select name="kind">${Object.entries(LEAVE_KINDS).map(([k, v]) => `<option value="${k}" ${(s.kind || 'holiday') === k ? 'selected' : ''}>${v.icon} ${v.label}</option>`).join('')}</select></label>
+      <label class="field"><span id="name-label">Action name</span><input type="text" name="name" required value="${esc(s.name)}" placeholder="e.g. BMP batch test set-up"></label>
+      <div class="field research-only"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Experiment conditions</span>
         <div id="conds">${conds.map(condRow).join('')}</div>
         <button type="button" class="btn sm" id="add-cond">＋ Add condition</button></div>
       <label class="field"><span>Notes (optional)</span><textarea name="notes" rows="2">${esc(s.notes)}</textarea></label>
@@ -791,7 +864,8 @@ function openStageForm({ id, pid, date, start } = {}) {
         <label class="field"><span>Start time</span><input type="time" name="start" value="${esc(s.start)}"></label>
         <label class="field"><span>End time</span><input type="time" name="end" value="${esc(s.end)}"></label>
       </div>
-      <p class="help">Leave the date empty to keep the stage unscheduled.</p>
+      <p class="help research-only">Leave the date empty to keep the stage unscheduled.</p>
+      <p class="help leave-only">Days off are always shown in white and never ask for a status update.</p>
     </form>`,
     footer: `<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="st-form">${found ? 'Save' : 'Add stage'}</button>`,
     onMount(m) {
@@ -803,6 +877,17 @@ function openStageForm({ id, pid, date, start } = {}) {
       });
       box.addEventListener('click', (e) => { if (e.target.closest('[data-rm]')) { e.target.closest('.cond-row').remove(); renumber(); } });
       const syncTimes = () => { $('#times', m).classList.toggle('hidden', form.allDay.checked); };
+      const syncType = () => {
+        const leave = isLeave(findProject(form.pid.value));
+        $$('.leave-only', m).forEach((el) => el.classList.toggle('hidden', !leave));
+        $$('.research-only', m).forEach((el) => el.classList.toggle('hidden', leave));
+        $('#name-label', m).textContent = leave ? 'Title' : 'Action name';
+        form.name.placeholder = leave ? 'e.g. Sports Day, dentist appointment' : 'e.g. BMP batch test set-up';
+        $('.modal-foot [type=submit]', m).textContent = found ? 'Save' : leave ? 'Add day off' : 'Add stage';
+        $('.modal-head h2', m).textContent = found ? (leave ? 'Edit day off' : 'Edit stage') : (leave ? 'New day off' : 'New stage');
+      };
+      form.pid.addEventListener('change', syncType);
+      syncType();
       form.allDay.addEventListener('change', () => { if (!form.allDay.checked && !form.start.value) { form.start.value = '09:00'; form.end.value = '12:00'; } syncTimes(); });
       syncTimes();
       form.addEventListener('submit', (e) => {
@@ -819,6 +904,7 @@ function openStageForm({ id, pid, date, start } = {}) {
           date, endDate: endDate === date ? '' : endDate, allDay, start: allDay ? '' : fd.get('start'), end: allDay ? '' : fd.get('end'),
         };
         const target = findProject(fd.get('pid'));
+        if (isLeave(target)) { next.conditions = []; next.kind = fd.get('kind'); next.outcome = null; next.comment = ''; }
         if (found) {
           Object.assign(s, next);
           if (target.id !== found.p.id) { found.p.stages.splice(found.i, 1); target.stages.push(s); }
@@ -826,7 +912,7 @@ function openStageForm({ id, pid, date, start } = {}) {
           target.stages.push({ id: uid('s'), ...next, outcome: null, comment: '' });
         }
         closeModal();
-        commit(found ? 'Stage saved' : 'Stage added');
+        commit(isLeave(target) ? (found ? 'Day off saved' : 'Day off added') : found ? 'Stage saved' : 'Stage added');
       });
     },
   });
@@ -840,17 +926,31 @@ function openProjectForm(id) {
     body: `<form id="pj-form" autocomplete="off">
       <label class="field"><span>Project title</span><input type="text" name="title" required value="${esc(p?.title || '')}"></label>
       <label class="field"><span>Description (optional)</span><textarea name="description" rows="3">${esc(p?.description || '')}</textarea></label>
-      <label class="field"><span>Status</span><select name="status">${['ongoing', 'paused', 'completed'].map((v) => `<option value="${v}" ${(p?.status || 'ongoing') === v ? 'selected' : ''}>${v[0].toUpperCase() + v.slice(1)}</option>`).join('')}</select></label>
+      <label class="field"><span>Type</span><select name="type">
+        <option value="research" ${!isLeave(p) ? 'selected' : ''}>Research project</option>
+        <option value="leave" ${isLeave(p) ? 'selected' : ''}>🏖 Holiday &amp; leave (white, no status updates)</option></select></label>
+      <div class="research-only"><label class="field"><span>Status</span><select name="status">${['ongoing', 'paused', 'completed'].map((v) => `<option value="${v}" ${(p?.status || 'ongoing') === v ? 'selected' : ''}>${v[0].toUpperCase() + v.slice(1)}</option>`).join('')}</select></label>
       <div class="field"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Colour</span>
         <div class="swatches">${COLORS.map((c) => `<label><input type="radio" name="color" value="${c}" ${c === color ? 'checked' : ''}><span style="background:${c}"></span></label>`).join('')}</div></div>
-      <p class="help" style="margin-top:6px">Projects with the same colour are grouped together on the dashboard.</p>
+      <p class="help" style="margin-top:6px">Projects with the same colour are grouped together on the dashboard.</p></div>
+      <p class="help leave-only">Holidays, personal appointments and university closures. They always show in white and never ask whether they went as planned.</p>
     </form>`,
     footer: `${p ? `<button class="btn danger" data-act="delete-project" data-id="${p.id}">Delete</button><span class="spacer"></span>` : ''}<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="pj-form">${p ? 'Save' : 'Create'}</button>`,
     onMount(m) {
-      $('#pj-form', m).addEventListener('submit', (e) => {
+      const form = $('#pj-form', m);
+      const syncType = () => {
+        const leave = form.type.value === 'leave';
+        $$('.leave-only', m).forEach((el) => el.classList.toggle('hidden', !leave));
+        $$('.research-only', m).forEach((el) => el.classList.toggle('hidden', leave));
+      };
+      form.type.addEventListener('change', syncType); syncType();
+      form.addEventListener('submit', (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
-        const v = { title: fd.get('title').trim(), description: fd.get('description').trim(), status: fd.get('status'), color: fd.get('color') || color };
+        const type = fd.get('type') === 'leave' ? 'leave' : 'research';
+        const v = { title: fd.get('title').trim(), description: fd.get('description').trim(), type, status: type === 'leave' ? 'ongoing' : fd.get('status'), color: fd.get('color') || color };
+        if (type === 'leave' && p && !isLeave(p) && p.stages.length && !confirm('Turn this project into “Holiday & leave”? Its stages will lose their results and conditions.')) return;
+        if (type === 'leave') for (const st of p?.stages || []) { st.outcome = null; st.conditions = []; st.comment = ''; st.kind ||= 'other'; }
         if (p) Object.assign(p, v);
         else { const np = { id: uid('p'), ...v, stages: [] }; state.data.projects.push(np); location.hash = `#/project/${np.id}`; }
         closeModal();
@@ -1005,6 +1105,12 @@ const actions = {
   },
   print() { window.print(); },
   'new-project'() { openProjectForm(); },
+  'new-leave'(el) {
+    closeModal();
+    let p = state.data.projects.find(isLeave);
+    if (!p) { p = { id: uid('p'), title: 'Holidays & leave', description: '', type: 'leave', status: 'ongoing', color: COLORS[7], stages: [] }; state.data.projects.push(p); }
+    openStageForm({ pid: p.id, date: el.dataset.date || ymd(new Date()) });
+  },
   'edit-project'(el) { openProjectForm(el.dataset.id); },
   'delete-project'(el) {
     const p = findProject(el.dataset.id); if (!p) return;

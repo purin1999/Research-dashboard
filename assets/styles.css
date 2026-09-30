@@ -193,6 +193,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .st-upcoming, .st-inprogress { --st: var(--up); --st-bg: var(--up-bg); --st-ink: var(--up-ink); }
 .st-overdue { --st: var(--due); --st-bg: var(--due-bg); --st-ink: var(--due-ink); }
 .st-planned, .st-unscheduled { --st: var(--plan); --st-bg: var(--plan-bg); --st-ink: var(--plan-ink); }
+/* Holiday & leave: always white, in light and dark mode. */
+.st-off { --st: #b8c2d0; --st-bg: #ffffff; --st-ink: #334155; }
 .badge { display: inline-flex; align-items: center; gap: 4px; font-size: .74rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--st-bg); color: var(--st-ink); border: 1px solid color-mix(in srgb, var(--st) 45%, transparent); white-space: nowrap; }
 .tinted { background: var(--st-bg); color: var(--st-ink); }
 
@@ -205,7 +207,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
   display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; cursor: pointer;
   background: var(--st-bg); border: 1px solid color-mix(in srgb, var(--st) 40%, transparent); color: var(--text);
 }
-.mini .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.mini .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(100, 116, 139, .45); }
 .mini .body { flex: 1; min-width: 0; }
 .mini .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini .s { font-size: .8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -223,7 +225,14 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
   position: relative; display: flex; gap: 12px; padding: 14px; margin-bottom: 12px; cursor: pointer;
   background: var(--surface); border: 1px solid var(--border); border-left: 6px solid var(--st); border-radius: var(--radius); box-shadow: var(--shadow);
 }
-.stage.st-upcoming, .stage.st-inprogress, .stage.st-done, .stage.st-failed, .stage.st-overdue { background: var(--st-bg); }
+.stage.st-upcoming, .stage.st-inprogress, .stage.st-done, .stage.st-failed, .stage.st-overdue, .stage.st-off { background: var(--st-bg); }
+.stage.st-off, .mini.st-off, .next-chip.st-off, .ev.st-off, .chip.st-off { color: var(--st-ink); }
+.stage.st-off .when, .mini.st-off .s { color: #64748b; }
+.stage.st-off .stage-num { font-size: 1rem; background: #fff; }
+.stage.st-off .btn { background: #fff; color: #1b2130; border-color: #d0d7e2; }
+.stage.st-off .btn.danger { color: #d93b3b; }
+.next-chip.st-off { border: 1px solid var(--st); }
+.leave-card::before { background: #d6dde8; }
 .stage.st-overdue { border-style: dashed; border-left-style: solid; }
 .stage-num {
   flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .85rem;
@@ -274,6 +283,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 @media (max-width: 720px) {
   .mday { min-height: 64px; padding: 2px; }
   .chip { font-size: 0; height: 6px; padding: 0; margin-bottom: 2px; border-left: 0; background: var(--st); border-radius: 3px; }
+  .chip.st-off { background: #fff; box-shadow: inset 0 0 0 1px #94a3b8; }
   .more { font-size: .6rem; }
   .dnum { font-size: .75rem; width: 22px; height: 22px; margin: 0 auto 2px; }
 }
