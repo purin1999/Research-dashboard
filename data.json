@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T14:19:44.446Z"
+    "updated": "2026-09-30T14:21:00.604Z"
   },
   "projects": [
     {
@@ -142,6 +142,20 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-09-30T14:18:44.753Z"
+        },
+        {
+          "id": "s_4frt0v0ie3",
+          "name": "TACMI 企業紹介イベント",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-09-25",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T14:20:55.276Z"
         }
       ],
       "type": "research"
