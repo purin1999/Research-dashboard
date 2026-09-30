@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T09:23:41.786Z"
+    "updated": "2026-09-30T14:18:46.289Z"
   },
   "projects": [
     {
@@ -51,7 +51,7 @@
       "id": "p_1ejh20d1z8",
       "title": "COSMO vacancy paper",
       "description": "Collabs with Murakami sensei",
-      "status": "ongoing",
+      "status": "paused",
       "color": "#14b8a6",
       "stages": [],
       "type": "research"
@@ -82,9 +82,9 @@
     },
     {
       "id": "p_gzbc7ca8w9",
-      "title": "Lab activity",
-      "description": "QoL improvement within laboratory",
-      "status": "ongoing",
+      "title": "Special activities",
+      "description": "TACMI and QoL in lab",
+      "status": "paused",
       "color": "#f97316",
       "stages": [
         {
@@ -100,6 +100,48 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-09-30T07:57:23.351Z"
+        },
+        {
+          "id": "s_opoh9gsmes",
+          "name": "Research progression application #1",
+          "notes": "Conceptualization\nDraft the design on paper",
+          "conditions": [],
+          "date": "2026-09-28",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T14:14:47.145Z"
+        },
+        {
+          "id": "s_yt54wpw6jz",
+          "name": "Research progression application #2",
+          "notes": "Git environment set-up (linking to Claude)\nCreation of application\nLaunch web app",
+          "conditions": [],
+          "date": "",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T14:17:31.000Z"
+        },
+        {
+          "id": "s_e8tuyvxr0t",
+          "name": "Research progression application #3",
+          "notes": "Debugging and improving the UI/UX quality",
+          "conditions": [],
+          "date": "2026-09-30",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T14:18:44.753Z"
         }
       ],
       "type": "research"
@@ -324,30 +366,6 @@
           "kind": "holiday",
           "outcome": null,
           "comment": ""
-        }
-      ]
-    },
-    {
-      "id": "p_7gilutjwgl",
-      "title": "TACMI event",
-      "description": "",
-      "type": "research",
-      "status": "ongoing",
-      "color": "#f97316",
-      "stages": [
-        {
-          "id": "s_6c9h9oll3b",
-          "name": "企業紹介イベント",
-          "notes": "",
-          "conditions": [],
-          "date": "2026-09-25",
-          "endDate": "",
-          "allDay": true,
-          "start": "",
-          "end": "",
-          "outcome": "done",
-          "comment": "",
-          "updatedAt": "2026-09-30T09:01:20.630Z"
         }
       ]
     }
