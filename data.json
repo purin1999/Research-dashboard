@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T07:58:12.693Z"
+    "updated": "2026-09-30T08:05:16.739Z"
   },
   "projects": [
     {
@@ -80,6 +80,43 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-09-30T07:57:23.351Z"
+        }
+      ]
+    },
+    {
+      "id": "p_wi98b4eh03",
+      "title": "SCEJ57f @Hiroshima university",
+      "description": "",
+      "status": "completed",
+      "color": "#22a55a",
+      "stages": [
+        {
+          "id": "s_69m86dj8ev",
+          "name": "Rehearsal #1",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-09-09",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "Highlight the importance rapid data accumulation",
+          "updatedAt": "2026-09-30T08:04:44.634Z"
+        },
+        {
+          "id": "s_txrowzkdnp",
+          "name": "Rehearsal #2",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-09-11",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "Ready for conference",
+          "updatedAt": "2026-09-30T08:05:08.658Z"
         }
       ]
     }
