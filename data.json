@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T08:37:22.740Z"
+    "updated": "2026-09-30T08:56:53.899Z"
   },
   "projects": [
     {
@@ -123,9 +123,166 @@
           "outcome": "done",
           "comment": "Ready for conference",
           "updatedAt": "2026-09-30T08:05:08.658Z"
+        },
+        {
+          "id": "s_9pm6scu2jn",
+          "name": "Abstract drafting",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-08-13",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T08:39:57.009Z"
+        },
+        {
+          "id": "s_5ttg1cutgb",
+          "name": "Abstract finalization",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-08-14",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T08:40:32.129Z"
+        },
+        {
+          "id": "s_k4vjgg0xth",
+          "name": "AgNP synthesis for data trend",
+          "notes": "",
+          "conditions": [
+            "40C, 17.5MPa"
+          ],
+          "date": "2026-08-27",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T08:45:24.246Z"
+        },
+        {
+          "id": "s_tj48vp329w",
+          "name": "AgNP synthesis for data trend",
+          "notes": "",
+          "conditions": [
+            "12.5MPa"
+          ],
+          "date": "2026-08-28",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T08:47:09.353Z"
+        },
+        {
+          "id": "s_g59h5q4z67",
+          "name": "TEM analysis",
+          "notes": "",
+          "conditions": [
+            "AgNP 12.5MPa",
+            "AgNP 17.5MPa"
+          ],
+          "date": "2026-09-01",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T08:48:27.363Z"
+        },
+        {
+          "id": "s_ku2ih4chd4",
+          "name": "Conference day",
+          "notes": "Relocation time included",
+          "conditions": [],
+          "date": "2026-09-13",
+          "endDate": "2026-09-17",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T08:54:19.163Z"
         }
       ],
       "type": "research"
+    },
+    {
+      "id": "p_um88x1rdhm",
+      "title": "Holidays & leave",
+      "description": "",
+      "type": "leave",
+      "status": "ongoing",
+      "color": "#64748b",
+      "stages": [
+        {
+          "id": "s_ya141eszxt",
+          "name": "Suspended from entry",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-08-10",
+          "endDate": "2026-08-12",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "kind": "closed",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_k5j0f486r5",
+          "name": "Entrance exam",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-08-18",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "kind": "closed",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_nqwzlk8h6u",
+          "name": "Entrance exam",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-08-25",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "kind": "closed",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_5dj1nqf6ny",
+          "name": "Silver week",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-09-21",
+          "endDate": "2026-09-23",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "kind": "holiday",
+          "outcome": null,
+          "comment": ""
+        }
+      ]
     }
   ]
 }
