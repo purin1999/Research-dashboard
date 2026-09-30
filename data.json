@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T08:05:16.739Z"
+    "updated": "2026-09-30T08:11:01.898Z"
   },
   "projects": [
     {
@@ -117,6 +117,29 @@
           "outcome": "done",
           "comment": "Ready for conference",
           "updatedAt": "2026-09-30T08:05:08.658Z"
+        }
+      ]
+    },
+    {
+      "id": "p_cnvjkepwo6",
+      "title": "Holiday and Personal leave",
+      "description": "",
+      "status": "completed",
+      "color": "#64748b",
+      "stages": [
+        {
+          "id": "s_34vbwtshq0",
+          "name": "大学一斉休業",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-08-10",
+          "endDate": "2026-08-12",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-09-30T08:10:48.439Z"
         }
       ]
     }
