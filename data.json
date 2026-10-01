@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-01T15:13:42.018Z"
+    "updated": "2026-10-01T15:14:34.889Z"
   },
   "projects": [
     {
@@ -401,7 +401,7 @@
       "id": "p_9ccscq9h81",
       "title": "AgNP production scaling-up",
       "description": "",
-      "status": "ongoing",
+      "status": "paused",
       "color": "#8b5cf6",
       "stages": [],
       "type": "research"
