@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-01T11:35:52.992Z"
+    "updated": "2026-10-01T14:43:20.086Z"
   },
   "projects": [
     {
@@ -101,6 +101,84 @@
           "notes": "scCO2 emulsion in microfluidic process",
           "conditions": [],
           "date": "2026-10-13",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_eyfka0vs53",
+          "name": "Writing introduction #2",
+          "notes": "Challenge within scCO2 system\nIn-situ DLS method",
+          "conditions": [],
+          "date": "2026-10-19",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_o199zowk6r",
+          "name": "Writing abstract",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-19",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_e3q7381nbp",
+          "name": "Brushing up #1",
+          "notes": "Checking for narrative",
+          "conditions": [],
+          "date": "2026-10-26",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_fko9913ckr",
+          "name": "Brushing up #2",
+          "notes": "Spelling and word choice",
+          "conditions": [],
+          "date": "2026-10-27",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_hxmsw93s13",
+          "name": "Citation #1",
+          "notes": "Introduction part",
+          "conditions": [],
+          "date": "2026-10-27",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_apkuj179u4",
+          "name": "Citation #2",
+          "notes": "Methodology onwards",
+          "conditions": [],
+          "date": "2026-10-28",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -276,6 +354,45 @@
           "end": "",
           "outcome": null,
           "comment": ""
+        },
+        {
+          "id": "s_f1drtty7jp",
+          "name": "Data collection: IFT in water/CO2 system",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-20",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_nn3m61zccq",
+          "name": "(Demo) CO2 slug measurement",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-21",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_lngh9z0kg7",
+          "name": "Modification or Exp.",
+          "notes": "Depends on Demo result",
+          "conditions": [],
+          "date": "2026-10-22",
+          "endDate": "2026-10-23",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "type": "research"
@@ -431,6 +548,19 @@
           "notes": "Resolve the limitation of 30 day renew activation prompt",
           "conditions": [],
           "date": "2026-10-05",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_0vbe058fy1",
+          "name": "Planning for November",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-30",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -772,7 +902,47 @@
       "status": "ongoing",
       "color": "#0ea5e9",
       "type": "event",
-      "stages": []
+      "stages": [
+        {
+          "id": "s_ecucj0r1ao",
+          "name": "All meeting",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-09",
+          "endDate": "",
+          "allDay": false,
+          "start": "11:00",
+          "end": "12:00",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_k0eajj483b",
+          "name": "Wrapping up for conference",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-29",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_9rvnya582d",
+          "name": "Conference (expected date)",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-30",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        }
+      ]
     }
   ]
 }
