@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-01T00:44:37.987Z"
+    "updated": "2026-10-01T02:03:34.464Z"
   },
   "projects": [
     {
@@ -222,6 +222,19 @@
           "id": "s_6hcrbwqmus",
           "name": "Meeting with Dr.Nui @Chulalongkorn university",
           "notes": "",
+          "conditions": [],
+          "date": "2026-10-05",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_n913tzz9bi",
+          "name": "Relocate waste system to Git environment",
+          "notes": "Resolve the limitation of 30 day renew activation prompt",
           "conditions": [],
           "date": "2026-10-05",
           "endDate": "",
