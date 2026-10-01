@@ -326,7 +326,7 @@
       "id": "p_gzbc7ca8w9",
       "title": "Special activities",
       "description": "TACMI and QoL in lab",
-      "status": "paused",
+      "status": "ongoing",
       "color": "#f97316",
       "stages": [
         {
@@ -439,7 +439,7 @@
           "comment": ""
         }
       ],
-      "type": "research"
+      "type": "event"
     },
     {
       "id": "p_wi98b4eh03",
@@ -764,6 +764,15 @@
           "comment": ""
         }
       ]
+    },
+    {
+      "id": "p_meeting01",
+      "title": "Meeting",
+      "description": "Regular meetings with the professor and lab members, and slide preparation for them.",
+      "status": "ongoing",
+      "color": "#0ea5e9",
+      "type": "event",
+      "stages": []
     }
   ]
 }

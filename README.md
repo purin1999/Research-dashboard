@@ -24,7 +24,10 @@ hosted free on GitHub Pages and designed for iPhone, and visitors can look but n
   project is created for you, or you can choose *Type → Holiday & leave* when creating a project.
 - **Calendar colours**: each bar uses its project's colour, and the status is a small dot on the bar
   (🟡 up next, 🟢 completed, 🔴 not as planned, 🟠 awaiting update, no dot = planned later). The calendar only lists
-  ongoing projects and Holiday & leave by default; choose *All projects (incl. paused & completed)* to see your overall workload.
+  ongoing projects, special events and Holiday & leave by default; choose *All projects (incl. paused & completed)* to see your overall workload.
+- **Special events** (📌): for regular meetings, slide preparation and other activities. Choose *Type → Special
+  event* for a project. Its entries keep their status colours and update prompts and always appear in the calendar
+  and the new-stage list, but the event is not counted as an ongoing project (no progress bar, not in the stats).
 - **Completed tab**: projects set to *Completed* move off the dashboard into their own tab.
 - **🔗 Share**: copies or shares the view-only link (without `?admin`).
 - **Export** (⇪ tab): a printable report you can save as PDF, a spreadsheet (`.csv`), a calendar file (`.ics` for
