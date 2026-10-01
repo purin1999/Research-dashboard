@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-01T02:47:09.378Z"
+    "updated": "2026-10-01T10:37:26.530Z"
   },
   "projects": [
     {
@@ -11,7 +11,22 @@
       "description": "",
       "status": "ongoing",
       "color": "#ec4899",
-      "stages": [],
+      "stages": [
+        {
+          "id": "s_8noz157kff",
+          "name": "Data arrangement for paper",
+          "notes": "Figures choosing\nStructure drafting",
+          "conditions": [],
+          "date": "2026-09-02",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-01T10:30:06.682Z"
+        }
+      ],
       "type": "research"
     },
     {
@@ -406,7 +421,7 @@
             "AgNP 12.5MPa",
             "AgNP 17.5MPa"
           ],
-          "date": "2026-09-01",
+          "date": "2026-08-31",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -498,6 +513,23 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-10-01T02:18:54.472Z"
+        },
+        {
+          "id": "s_axgbot4fij",
+          "name": "TEM image processing",
+          "notes": "Manual processing by hands",
+          "conditions": [
+            "12.5MPa",
+            "17.5MPa"
+          ],
+          "date": "2026-09-01",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-01T10:27:51.661Z"
         }
       ],
       "type": "research"
