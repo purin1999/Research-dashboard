@@ -71,7 +71,8 @@ function normalize(d) {
     p.description ??= '';
     p.status ||= 'ongoing';
     p.color ||= COLORS[0];
-    p.type = p.type === 'leave' ? 'leave' : 'research';
+    p.type = ['leave', 'event'].includes(p.type) ? p.type : 'research';
+    if (p.type !== 'research') p.status = 'ongoing';
     p.stages = Array.isArray(p.stages) ? p.stages : [];
     for (const s of p.stages) {
       s.id ||= uid('s');
@@ -130,6 +131,11 @@ function computeStatuses(now = new Date()) {
 }
 const statusOf = (s) => state.statuses.get(s.id) || 'planned';
 const isLeave = (p) => p?.type === 'leave';
+// Special events (regular meetings, seminars, lab activities): stages keep their
+// status colours and update prompts, but the project is not an "ongoing project"
+// (no progress bar, not in the stats) and is always listed in the calendar and stage form.
+const isEvent = (p) => p?.type === 'event';
+const isResearch = (p) => !isLeave(p) && !isEvent(p);
 const projColor = (p) => (isLeave(p) ? LEAVE_COLOR : p.color);
 // Label + icon for a stage's status; days off show their kind instead.
 function stInfo(s, st = statusOf(s)) {
@@ -399,15 +405,16 @@ const legend = () => `<div class="legend">${['upcoming', 'done', 'failed', 'over
 function viewDashboard() {
   const { meta } = state.data;
   const all = byColor();
-  const projects = all.filter((p) => !isLeave(p));
+  const projects = all.filter(isResearch);
   const leave = all.filter(isLeave);
+  const events = all.filter(isEvent);
   const now = new Date();
   const ongoing = projects.filter((p) => p.status === 'ongoing');
   const paused = projects.filter((p) => p.status === 'paused');
   const completed = projects.filter((p) => p.status === 'completed');
   const overdue = allItems().filter((x) => x.st === 'overdue').sort((a, b) => a.r.start - b.r.start);
   const in7 = addDays(now, 7);
-  const soon = allItems((p) => p.status !== 'completed').filter((x) => x.r && x.r.end >= now && !x.s.outcome && x.r.start <= addDays(now, 14)).sort((a, b) => a.r.start - b.r.start);
+  const soon = allItems((p) => p.status !== 'completed').filter((x) => x.r && x.r.end >= now && !x.s.outcome && x.r.start <= in7).sort((a, b) => a.r.start - b.r.start);
   const totals = [...ongoing, ...paused].reduce((t, p) => { const c = progressOf(p); t.done += c.done; t.counted += c.counted; return t; }, { done: 0, counted: 0 });
 
   return `
@@ -430,7 +437,9 @@ function viewDashboard() {
     ${ongoing.length ? `<div class="projects">${ongoing.map(projectCard).join('')}</div>`
       : `<div class="card empty">No ongoing projects yet.${state.edit ? '<br><button class="btn primary" data-act="new-project">＋ Create your first project</button>' : ''}</div>`}
 
-    ${soon.length ? `<div class="section-title">Coming up · next 14 days</div><div class="mini-list">${soon.slice(0, 8).map((x) => miniRow(x)).join('')}</div>` : ''}
+    ${soon.length ? `<div class="section-title">Coming up · next 7 days</div><div class="mini-list">${soon.map((x) => miniRow(x)).join('')}</div>` : ''}
+
+    ${events.length ? `<div class="section-title">Special events</div><div class="projects">${events.map(eventCard).join('')}</div>` : ''}
 
     ${paused.length ? `<div class="section-title">Paused <span class="count">${paused.length}</span></div><div class="projects">${paused.map(projectCard).join('')}</div>` : ''}
 
@@ -441,7 +450,7 @@ function viewDashboard() {
 }
 
 function viewCompleted() {
-  const done = byColor().filter((p) => !isLeave(p) && p.status === 'completed');
+  const done = byColor().filter((p) => isResearch(p) && p.status === 'completed');
   return `
     <div class="page-head"><div><h1>Completed projects</h1><div class="sub">Finished projects are kept here so the dashboard stays short.</div></div></div>
     ${done.length ? `<div class="projects">${done.map(projectCard).join('')}</div>`
@@ -461,6 +470,19 @@ function projectCard(p) {
     </div></a>`;
 }
 
+function eventCard(p) {
+  const now = new Date();
+  const next = p.stages.map((s) => ({ s, st: statusOf(s), r: stageRange(s) })).filter((x) => x.r && x.r.end >= now && !x.s.outcome).sort((a, b) => a.r.start - b.r.start);
+  return `<a class="card project-card" href="#/project/${encodeURIComponent(p.id)}" style="--pc:${esc(p.color)}">
+    <h3>📌 ${esc(p.title)}</h3>
+    ${p.description ? `<div class="desc">${esc(p.description)}</div>` : ''}
+    <div class="pc-foot">
+      ${next.length ? next.slice(0, 3).map(({ s, st }) => `<div class="next-chip tinted st-${st}"><span>${STATUS[st].icon}</span><div><div class="t">${esc(s.name)}</div><div>${esc(fmtWhen(s))}</div></div></div>`).join('')
+        : '<div class="muted small">Nothing scheduled.</div>'}
+      ${next.length > 3 ? `<div class="muted small">+${next.length - 3} more</div>` : ''}
+    </div></a>`;
+}
+
 function leaveCard(p) {
   const today0 = startOfDay(new Date());
   const next = p.stages.map((s) => ({ s, r: stageRange(s) })).filter((x) => x.r && x.r.end >= today0).sort((a, b) => a.r.start - b.r.start);
@@ -474,7 +496,7 @@ function leaveCard(p) {
     </div></a>`;
 }
 
-function stageCard(p, s, i) {
+function stageCard(p, s, i, sorted = false) {
   const st = statusOf(s);
   const E = state.edit;
   if (st === 'off') {
@@ -488,7 +510,7 @@ function stageCard(p, s, i) {
     </div></li>`;
   }
   return `<li class="stage st-${st}" data-act="open-stage" data-id="${s.id}">
-    <div class="stage-num">${s.outcome === 'done' ? '✓' : s.outcome === 'failed' ? '✕' : i + 1}</div>
+    <div class="stage-num">${s.outcome === 'done' ? '✓' : s.outcome === 'failed' ? '✕' : sorted ? '•' : i + 1}</div>
     <div class="stage-main">
       <div class="stage-top"><h3>${esc(s.name)}</h3>${badge(st, s)}</div>
       <div class="when">🗓 ${esc(fmtWhen(s))}</div>
@@ -500,8 +522,8 @@ function stageCard(p, s, i) {
         ${st !== 'overdue' ? `<button class="btn sm" data-act="outcome" data-id="${s.id}">Update result</button>` : ''}
         <button class="btn sm" data-act="edit-stage" data-id="${s.id}">✎ Edit</button>
         ${s.outcome === 'failed' ? `<button class="btn sm" data-act="dup-stage" data-id="${s.id}">↻ Reschedule as new stage</button>` : ''}
-        <button class="btn sm" data-act="move-stage" data-id="${s.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
-        <button class="btn sm" data-act="move-stage" data-id="${s.id}" data-dir="1" ${i === p.stages.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
+        ${sorted ? '' : `<button class="btn sm" data-act="move-stage" data-id="${s.id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
+        <button class="btn sm" data-act="move-stage" data-id="${s.id}" data-dir="1" ${i === p.stages.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>`}
         <button class="btn sm danger" data-act="delete-stage" data-id="${s.id}">Delete</button>
       </div>` : ''}
     </div></li>`;
@@ -511,6 +533,7 @@ function viewProject(id) {
   const p = findProject(id);
   if (!p) return '<div class="card empty">Project not found. <a href="#/">Back to dashboard</a></div>';
   if (isLeave(p)) return viewLeave(p);
+  if (isEvent(p)) return viewEvent(p);
   const c = progressOf(p);
   return `
     <div class="crumbs"><a href="#/">← Dashboard</a></div>
@@ -529,6 +552,32 @@ function viewProject(id) {
     <div class="no-print" style="margin:-4px 0 6px">${legend()}</div>
     ${p.stages.length ? `<ol class="timeline">${p.stages.map((s, i) => stageCard(p, s, i)).join('')}</ol>`
       : `<div class="card empty">No stages yet.${state.edit ? `<br><button class="btn primary" data-act="new-stage" data-pid="${p.id}">＋ Add the first stage</button>` : ''}</div>`}`;
+}
+
+function viewEvent(p) {
+  // Event entries are shown by date: upcoming first, then past (newest first).
+  const byDate = [...p.stages].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999') || (a.start || '').localeCompare(b.start || ''));
+  const now = new Date();
+  const isPast = (s) => { const r = stageRange(s); return r && r.end < now && s.outcome; };
+  const upcoming = byDate.filter((s) => !isPast(s));
+  const past = byDate.filter(isPast).reverse();
+  const list = (xs) => `<ol class="timeline">${xs.map((s) => stageCard(p, s, 0, true)).join('')}</ol>`;
+  return `
+    <div class="crumbs"><a href="#/">← Dashboard</a></div>
+    <div class="card proj-head" style="--pc:${esc(p.color)}">
+      <div class="row" style="align-items:flex-start"><h1>📌 ${esc(p.title)}</h1><span class="pill">Special event</span></div>
+      ${p.description ? `<p class="muted" style="margin:6px 0 0;white-space:pre-wrap">${esc(p.description)}</p>` : ''}
+      <div class="row no-print" style="margin-top:14px">
+        ${state.edit ? `<button class="btn primary" data-act="new-stage" data-pid="${p.id}">＋ Add entry</button>
+          <button class="btn" data-act="edit-project" data-id="${p.id}">✎ Edit</button>` : ''}
+        <a class="btn" href="#/calendar" data-act="cal-project" data-id="${p.id}">📅 Calendar</a>
+        <button class="btn" data-act="export">⇪ Export</button>
+      </div>
+    </div>
+    <div class="section-title">Upcoming &amp; to update <span class="count">${upcoming.length}</span></div>
+    <div class="no-print" style="margin:-4px 0 6px">${legend()}</div>
+    ${upcoming.length ? list(upcoming) : `<div class="card empty">Nothing scheduled.${state.edit ? `<br><button class="btn primary" data-act="new-stage" data-pid="${p.id}">＋ Add entry</button>` : ''}</div>`}
+    ${past.length ? `<div class="section-title">Past <span class="count">${past.length}</span></div>${list(past)}` : ''}`;
 }
 
 function viewLeave(p) {
@@ -557,7 +606,7 @@ function viewLeave(p) {
 // ---- calendar
 // The calendar only offers ongoing research projects and holiday/leave projects;
 // paused and completed ones are left out (unless opened from their project page).
-const calProjects = () => byColor().filter((p) => isLeave(p) || p.status === 'ongoing');
+const calProjects = () => byColor().filter((p) => !isResearch(p) || p.status === 'ongoing');
 function calItems() {
   const f = state.cal.project;
   const shown = new Set(calProjects().map((p) => p.id));
@@ -571,10 +620,7 @@ function calChip(x, label, cls = '') {
   return `<button class="chip st-${x.st} ${cls}" style="--pc:${esc(projColor(x.p))}" data-act="open-stage" data-id="${x.s.id}" title="${esc(`${x.s.name} · ${x.p.title} · ${info.label}`)}">${STATUS_DOT.has(x.st) ? '<span class="sdot" aria-hidden="true"></span>' : ''}${label}</button>`;
 }
 function calLegend() {
-  const f = state.cal.project;
-  const ps = f === 'everything' ? byColor() : f === 'all' ? calProjects() : byColor().filter((p) => p.id === f);
-  return `<div class="legend cal-legend">${ps.map((p) => `<span><i class="pswatch" style="--pc:${esc(projColor(p))}"></i>${esc(p.title)}</span>`).join('')}</div>
-    <div class="legend cal-legend" style="margin-top:6px">${['upcoming', 'done', 'failed', 'overdue'].map((k) => `<span class="st-${k}"><span class="sdot"></span>${STATUS[k].label}</span>`).join('')}<span class="muted">No dot = planned later</span></div>`;
+  return `<div class="legend cal-legend">${['upcoming', 'done', 'failed', 'overdue'].map((k) => `<span class="st-${k}"><span class="sdot"></span>${STATUS[k].label}</span>`).join('')}</div>`;
 }
 function itemsOnDay(items, day) {
   const d0 = startOfDay(day); const d1 = addDays(d0, 1);
@@ -872,15 +918,21 @@ function openOutcome(id, preset) {
 function openStageForm({ id, pid, date, start } = {}) {
   const found = id ? findStage(id) : null;
   const s = found ? found.s : { name: '', notes: '', conditions: [''], date: date || '', endDate: '', start: start || '', end: start ? fromMin(Math.min(toMin(start) + 120, 23 * 60 + 59)) : '', allDay: !start, outcome: null, comment: '', kind: 'holiday' };
-  const research = state.data.projects.filter((p) => !isLeave(p));
-  const projectId = found ? found.p.id : pid || (findProject(state.cal.project) ? state.cal.project : research.find((p) => p.status === 'ongoing')?.id || research[0]?.id || state.data.projects[0]?.id);
+  // Offer ongoing research projects and special events; a holiday/leave project only
+  // when adding or editing a day off, and the stage's own project when editing.
+  const listed = byColor().filter((p) => (isResearch(p) && p.status === 'ongoing') || isEvent(p));
+  const pref = findProject(pid) || (found && found.p) || findProject(state.cal.project);
+  const projectId = (pref && (listed.includes(pref) || isLeave(pref) || found) ? pref.id : listed[0]?.id) || state.data.projects[0]?.id;
+  const choices = [...listed];
+  const own = findProject(projectId);
+  if (own && !choices.includes(own)) choices.push(own);
   if (!state.data.projects.length) { toast('Create a project first'); openProjectForm(); return; }
   const conds = s.conditions.length ? [...s.conditions] : [''];
   const condRow = (v, i) => `<div class="cond-row"><span class="lab">Condition ${i + 1}</span><textarea name="cond" rows="1" placeholder="e.g. 35 °C, pH 7, 3 replicates">${esc(v)}</textarea><button type="button" class="icon-btn" data-rm aria-label="Remove condition">✕</button></div>`;
   openModal({
     title: found ? 'Edit stage' : 'New stage',
     body: `<form id="st-form" autocomplete="off">
-      <label class="field"><span>Project</span><select name="pid">${byColor().map((p) => `<option value="${esc(p.id)}" ${p.id === projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('')}</select></label>
+      <label class="field"><span>Project</span><select name="pid">${choices.map((p) => `<option value="${esc(p.id)}" ${p.id === projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('')}</select></label>
       <label class="field leave-only"><span>Type of day off</span><select name="kind">${Object.entries(LEAVE_KINDS).map(([k, v]) => `<option value="${k}" ${(s.kind || 'holiday') === k ? 'selected' : ''}>${v.icon} ${v.label}</option>`).join('')}</select></label>
       <label class="field"><span id="name-label">Action name</span><input type="text" name="name" required value="${esc(s.name)}" placeholder="e.g. BMP batch test set-up"></label>
       <div class="field research-only"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Experiment conditions</span>
@@ -959,12 +1011,14 @@ function openProjectForm(id) {
       <label class="field"><span>Project title</span><input type="text" name="title" required value="${esc(p?.title || '')}"></label>
       <label class="field"><span>Description (optional)</span><textarea name="description" rows="3">${esc(p?.description || '')}</textarea></label>
       <label class="field"><span>Type</span><select name="type">
-        <option value="research" ${!isLeave(p) ? 'selected' : ''}>Research project</option>
+        <option value="research" ${isResearch(p) ? 'selected' : ''}>Research project</option>
+        <option value="event" ${isEvent(p) ? 'selected' : ''}>📌 Special event (meetings, activities)</option>
         <option value="leave" ${isLeave(p) ? 'selected' : ''}>🏖 Holiday &amp; leave (white, no status updates)</option></select></label>
-      <div class="research-only"><label class="field"><span>Status</span><select name="status">${['ongoing', 'paused', 'completed'].map((v) => `<option value="${v}" ${(p?.status || 'ongoing') === v ? 'selected' : ''}>${v[0].toUpperCase() + v.slice(1)}</option>`).join('')}</select></label>
+      <div class="research-only"><label class="field rs-only"><span>Status</span><select name="status">${['ongoing', 'paused', 'completed'].map((v) => `<option value="${v}" ${(p?.status || 'ongoing') === v ? 'selected' : ''}>${v[0].toUpperCase() + v.slice(1)}</option>`).join('')}</select></label>
       <div class="field"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Colour</span>
         <div class="swatches">${COLORS.map((c) => `<label><input type="radio" name="color" value="${c}" ${c === color ? 'checked' : ''}><span style="background:${c}"></span></label>`).join('')}</div></div>
       <p class="help" style="margin-top:6px">Projects with the same colour are grouped together on the dashboard.</p></div>
+      <p class="help ev-only">Regular meetings, slide preparation, seminars and other activities. Entries keep their status colours and update prompts, but the event isn't counted as an ongoing project.</p>
       <p class="help leave-only">Holidays, personal appointments and university closures. They always show in white and never ask whether they went as planned.</p>
     </form>`,
     footer: `${p ? `<button class="btn danger" data-act="delete-project" data-id="${p.id}">Delete</button><span class="spacer"></span>` : ''}<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="pj-form">${p ? 'Save' : 'Create'}</button>`,
@@ -974,13 +1028,15 @@ function openProjectForm(id) {
         const leave = form.type.value === 'leave';
         $$('.leave-only', m).forEach((el) => el.classList.toggle('hidden', !leave));
         $$('.research-only', m).forEach((el) => el.classList.toggle('hidden', leave));
+        $$('.rs-only', m).forEach((el) => el.classList.toggle('hidden', form.type.value !== 'research'));
+        $$('.ev-only', m).forEach((el) => el.classList.toggle('hidden', form.type.value !== 'event'));
       };
       form.type.addEventListener('change', syncType); syncType();
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
-        const type = fd.get('type') === 'leave' ? 'leave' : 'research';
-        const v = { title: fd.get('title').trim(), description: fd.get('description').trim(), type, status: type === 'leave' ? 'ongoing' : fd.get('status'), color: fd.get('color') || color };
+        const type = ['leave', 'event'].includes(fd.get('type')) ? fd.get('type') : 'research';
+        const v = { title: fd.get('title').trim(), description: fd.get('description').trim(), type, status: type === 'research' ? fd.get('status') : 'ongoing', color: fd.get('color') || color };
         if (type === 'leave' && p && !isLeave(p) && p.stages.length && !confirm('Turn this project into “Holiday & leave”? Its stages will lose their results and conditions.')) return;
         if (type === 'leave') for (const st of p?.stages || []) { st.outcome = null; st.conditions = []; st.comment = ''; st.kind ||= 'other'; }
         if (p) Object.assign(p, v);
