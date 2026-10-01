@@ -22,6 +22,11 @@ hosted free on GitHub Pages and designed for iPhone, and visitors can look but n
     ask for a status update and don't count toward progress.
 - **Holiday & leave**: tap **＋ Day off** on the dashboard or the calendar. The first time, a "Holidays & leave"
   project is created for you, or you can choose *Type → Holiday & leave* when creating a project.
+- **Calendar colours**: each bar uses its project's colour, and the status is a small dot on the bar
+  (🟡 up next, 🟢 completed, 🔴 not as planned, 🟠 awaiting update, no dot = planned later). The calendar only lists
+  ongoing projects and Holiday & leave by default; choose *All projects (incl. paused & completed)* to see your overall workload.
+- **Completed tab**: projects set to *Completed* move off the dashboard into their own tab.
+- **🔗 Share**: copies or shares the view-only link (without `?admin`).
 - **Export** (⇪ tab): a printable report you can save as PDF, a spreadsheet (`.csv`), a calendar file (`.ics` for
   Google or Apple Calendar) and a full data backup (`.json`). You can export one project or everything.
 

@@ -275,15 +275,26 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .chip {
   display: block; width: 100%; text-align: left; font: inherit; font-size: .72rem; line-height: 1.25; font-weight: 600;
   padding: 2px 5px; margin-bottom: 2px; border-radius: 5px; cursor: pointer; border: 0;
-  background: var(--st-bg); color: var(--st-ink); border-left: 3px solid var(--st);
+  /* Bars take the project colour; the status is the small dot. */
+  background: color-mix(in srgb, var(--pc, var(--st)) 22%, var(--surface)); color: var(--text); border-left: 3px solid var(--pc, var(--st));
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.chip.st-off { background: #fff; color: #334155; border-left-color: #b8c2d0; box-shadow: inset 0 0 0 1px #d6dde8; }
+.sdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--st); margin-right: 4px; vertical-align: 0; flex: none; box-shadow: 0 0 0 1.5px var(--surface); }
+.chip.st-overdue .sdot, .ev.st-overdue .sdot { box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 3px var(--due); }
+.legend .pswatch { background: var(--pc); border: 1px solid rgba(100, 116, 139, .55); }
+.legend.cal-legend .sdot { margin-right: 5px; }
 .chip.st-overdue { outline: 1px dashed var(--due); outline-offset: -1px; }
 .more { font-size: .7rem; color: var(--muted); padding-left: 4px; }
 @media (max-width: 720px) {
   .mday { min-height: 64px; padding: 2px; }
-  .chip { font-size: 0; height: 6px; padding: 0; margin-bottom: 2px; border-left: 0; background: var(--st); border-radius: 3px; }
+  .chip { font-size: 0; height: 9px; padding: 0 1px; margin-bottom: 2px; border-left: 0; background: var(--pc, var(--st)); border-radius: 5px; display: flex; align-items: center; }
+  .chip .sdot { width: 7px; height: 7px; margin: 0; box-shadow: 0 0 0 1.5px #fff; }
+  .chip.st-overdue .sdot { box-shadow: 0 0 0 1.5px #fff; }
   .chip.st-off { background: #fff; box-shadow: inset 0 0 0 1px #94a3b8; }
+  .wk-allday .chip.wide { font-size: .65rem; height: auto; padding: 2px 4px; display: block; background: color-mix(in srgb, var(--pc, var(--st)) 22%, var(--surface)); border-left: 3px solid var(--pc, var(--st)); }
+  .wk-allday .chip.wide.st-off { background: #fff; border-left-color: #b8c2d0; }
+  .wk-allday .chip.wide .sdot { width: 6px; height: 6px; margin-right: 3px; display: inline-block; }
   .more { font-size: .6rem; }
   .dnum { font-size: .75rem; width: 22px; height: 22px; margin: 0 auto 2px; }
 }
@@ -304,8 +315,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .wk-col.today { background-color: color-mix(in srgb, var(--accent) 5%, transparent); }
 .ev {
   position: absolute; left: 2px; right: 2px; border-radius: 6px; padding: 3px 5px; font-size: .72rem; line-height: 1.2; overflow: hidden; cursor: pointer;
-  background: var(--st-bg); color: var(--st-ink); border-left: 3px solid var(--st); box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  background: color-mix(in srgb, var(--pc, var(--st)) 22%, var(--surface)); color: var(--text); border-left: 3px solid var(--pc, var(--st)); box-shadow: 0 1px 2px rgba(0,0,0,.08);
 }
+.ev.st-off { background: #fff; color: #334155; border-left-color: #b8c2d0; }
 .ev.st-overdue { outline: 1px dashed var(--due); outline-offset: -1px; }
 .ev b { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
 .ev .pdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 3px; }
@@ -357,6 +369,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .banner .inner.st-overdue { background: var(--due-bg); color: var(--due-ink); border: 1px solid color-mix(in srgb, var(--due) 40%, transparent); }
 #toast { position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + 20px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px); z-index: 60; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: .9rem; opacity: 0; pointer-events: none; transition: .2s; max-width: calc(100vw - 32px); }
 #toast.show { opacity: 1; transform: translateX(-50%); }
+.archive-link { display: flex; align-items: center; gap: 12px; margin-top: 22px; color: var(--text); padding: 14px 16px; }
+.archive-link .ico { font-size: 1.2rem; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--done-bg); color: var(--done-ink); flex: none; }
 .foot { font-size: .8rem; color: var(--muted); padding-top: 8px; padding-bottom: 24px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; }
 .empty { text-align: center; padding: 30px 16px; color: var(--muted); }
 .empty .btn { margin-top: 12px; }

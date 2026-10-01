@@ -361,6 +361,7 @@ function parseRoute() {
   const [name, id] = h.split('/');
   if (name === 'project' && id) return { name: 'project', id: decodeURIComponent(id) };
   if (name === 'calendar') return { name: 'calendar' };
+  if (name === 'completed') return { name: 'completed' };
   if (name === 'report') return { name: 'report', id: id ? decodeURIComponent(id) : 'all' };
   return { name: 'dashboard' };
 }
@@ -402,24 +403,12 @@ function viewDashboard() {
   const leave = all.filter(isLeave);
   const now = new Date();
   const ongoing = projects.filter((p) => p.status === 'ongoing');
-  const others = projects.filter((p) => p.status !== 'ongoing');
+  const paused = projects.filter((p) => p.status === 'paused');
+  const completed = projects.filter((p) => p.status === 'completed');
   const overdue = allItems().filter((x) => x.st === 'overdue').sort((a, b) => a.r.start - b.r.start);
   const in7 = addDays(now, 7);
   const soon = allItems((p) => p.status !== 'completed').filter((x) => x.r && x.r.end >= now && !x.s.outcome && x.r.start <= addDays(now, 14)).sort((a, b) => a.r.start - b.r.start);
-  const totals = projects.reduce((t, p) => { const c = progressOf(p); t.done += c.done; t.counted += c.counted; return t; }, { done: 0, counted: 0 });
-
-  const card = (p) => {
-    const c = progressOf(p);
-    const nextS = p.stages.find((s) => ['upcoming', 'inprogress'].includes(statusOf(s)));
-    return `<a class="card project-card" href="#/project/${encodeURIComponent(p.id)}" style="--pc:${esc(p.color)}">
-      <div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><h3>${esc(p.title)}</h3>${p.status !== 'ongoing' ? `<span class="pill">${esc(p.status)}</span>` : ''}</div>
-      ${p.description ? `<div class="desc">${esc(p.description)}</div>` : ''}
-      <div class="pc-foot">
-        ${pbar(c)}${progressMeta(c)}
-        ${nextS ? `<div class="next-chip tinted st-${statusOf(nextS)}"><span>${STATUS[statusOf(nextS)].icon}</span><div><div class="t">${esc(nextS.name)}</div><div>${esc(fmtWhen(nextS))}</div></div></div>`
-          : c.total && c.done === c.counted ? '<div class="next-chip tinted st-done">✓ All stages completed</div>' : ''}
-      </div></a>`;
-  };
+  const totals = [...ongoing, ...paused].reduce((t, p) => { const c = progressOf(p); t.done += c.done; t.counted += c.counted; return t; }, { done: 0, counted: 0 });
 
   return `
     <div class="page-head">
@@ -438,15 +427,38 @@ function viewDashboard() {
       <div class="mini-list">${overdue.map((x) => miniRow(x, true)).join('')}</div>` : ''}
 
     <div class="section-title">Ongoing projects <span class="count">${ongoing.length}</span></div>
-    ${ongoing.length ? `<div class="projects">${ongoing.map(card).join('')}</div>`
+    ${ongoing.length ? `<div class="projects">${ongoing.map(projectCard).join('')}</div>`
       : `<div class="card empty">No ongoing projects yet.${state.edit ? '<br><button class="btn primary" data-act="new-project">＋ Create your first project</button>' : ''}</div>`}
 
     ${soon.length ? `<div class="section-title">Coming up · next 14 days</div><div class="mini-list">${soon.slice(0, 8).map((x) => miniRow(x)).join('')}</div>` : ''}
 
-    ${others.length ? `<div class="section-title">Paused &amp; completed <span class="count">${others.length}</span></div><div class="projects">${others.map(card).join('')}</div>` : ''}
+    ${paused.length ? `<div class="section-title">Paused <span class="count">${paused.length}</span></div><div class="projects">${paused.map(projectCard).join('')}</div>` : ''}
 
     ${leave.length ? `<div class="section-title">Holidays &amp; leave</div><div class="projects">${leave.map(leaveCard).join('')}</div>` : ''}
+
+    ${completed.length ? `<a class="card archive-link" href="#/completed"><span class="ico">✓</span><span><b>Completed projects</b><br><span class="muted small">${completed.length} project${completed.length > 1 ? 's' : ''} · moved out of the dashboard</span></span><span class="spacer"></span><span aria-hidden="true">›</span></a>` : ''}
     <div style="margin-top:18px">${legend()}</div>`;
+}
+
+function viewCompleted() {
+  const done = byColor().filter((p) => !isLeave(p) && p.status === 'completed');
+  return `
+    <div class="page-head"><div><h1>Completed projects</h1><div class="sub">Finished projects are kept here so the dashboard stays short.</div></div></div>
+    ${done.length ? `<div class="projects">${done.map(projectCard).join('')}</div>`
+      : '<div class="card empty">No completed projects yet.<br><span class="small">Set a project’s status to <b>Completed</b> (✎ Edit project) to move it here.</span></div>'}`;
+}
+
+function projectCard(p) {
+  const c = progressOf(p);
+  const nextS = p.stages.find((s) => ['upcoming', 'inprogress'].includes(statusOf(s)));
+  return `<a class="card project-card" href="#/project/${encodeURIComponent(p.id)}" style="--pc:${esc(p.color)}">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><h3>${esc(p.title)}</h3>${p.status !== 'ongoing' ? `<span class="pill">${esc(p.status)}</span>` : ''}</div>
+    ${p.description ? `<div class="desc">${esc(p.description)}</div>` : ''}
+    <div class="pc-foot">
+      ${pbar(c)}${progressMeta(c)}
+      ${nextS ? `<div class="next-chip tinted st-${statusOf(nextS)}"><span>${STATUS[statusOf(nextS)].icon}</span><div><div class="t">${esc(nextS.name)}</div><div>${esc(fmtWhen(nextS))}</div></div></div>`
+        : c.total && c.done === c.counted ? '<div class="next-chip tinted st-done">✓ All stages completed</div>' : ''}
+    </div></a>`;
 }
 
 function leaveCard(p) {
@@ -543,9 +555,26 @@ function viewLeave(p) {
 }
 
 // ---- calendar
+// The calendar only offers ongoing research projects and holiday/leave projects;
+// paused and completed ones are left out (unless opened from their project page).
+const calProjects = () => byColor().filter((p) => isLeave(p) || p.status === 'ongoing');
 function calItems() {
   const f = state.cal.project;
-  return allItems((p) => f === 'all' || p.id === f).filter((x) => x.r);
+  const shown = new Set(calProjects().map((p) => p.id));
+  // 'everything' also includes paused and completed projects (overall workload).
+  return allItems((p) => (f === 'everything' ? true : f === 'all' ? shown.has(p.id) : p.id === f)).filter((x) => x.r);
+}
+// Calendar bars use the project's colour; the status is a small dot on the bar.
+const STATUS_DOT = new Set(['upcoming', 'inprogress', 'done', 'failed', 'overdue']);
+function calChip(x, label, cls = '') {
+  const info = stInfo(x.s, x.st);
+  return `<button class="chip st-${x.st} ${cls}" style="--pc:${esc(projColor(x.p))}" data-act="open-stage" data-id="${x.s.id}" title="${esc(`${x.s.name} · ${x.p.title} · ${info.label}`)}">${STATUS_DOT.has(x.st) ? '<span class="sdot" aria-hidden="true"></span>' : ''}${label}</button>`;
+}
+function calLegend() {
+  const f = state.cal.project;
+  const ps = f === 'everything' ? byColor() : f === 'all' ? calProjects() : byColor().filter((p) => p.id === f);
+  return `<div class="legend cal-legend">${ps.map((p) => `<span><i class="pswatch" style="--pc:${esc(projColor(p))}"></i>${esc(p.title)}</span>`).join('')}</div>
+    <div class="legend cal-legend" style="margin-top:6px">${['upcoming', 'done', 'failed', 'overdue'].map((k) => `<span class="st-${k}"><span class="sdot"></span>${STATUS[k].label}</span>`).join('')}<span class="muted">No dot = planned later</span></div>`;
 }
 function itemsOnDay(items, day) {
   const d0 = startOfDay(day); const d1 = addDays(d0, 1);
@@ -572,18 +601,20 @@ function viewCalendar() {
     title = 'Schedule';
     body = agendaView(items);
   }
-  const opts = byColor().map((p) => `<option value="${esc(p.id)}" ${c.project === p.id ? 'selected' : ''}>${esc(p.title)}</option>`).join('');
+  const listed = calProjects();
+  const sel = !['all', 'everything'].includes(c.project) && !listed.some((p) => p.id === c.project) ? findProject(c.project) : null;
+  const opts = [...listed, ...(sel ? [sel] : [])].map((p) => `<option value="${esc(p.id)}" ${c.project === p.id ? 'selected' : ''}>${esc(p.title)}</option>`).join('');
   return `
     <div class="cal-toolbar">
       <h2>${esc(title)}</h2>
       ${c.view !== 'agenda' ? `<div class="row"><button class="btn sm" data-act="cal-nav" data-d="-1" aria-label="Previous">‹</button><button class="btn sm" data-act="cal-today">Today</button><button class="btn sm" data-act="cal-nav" data-d="1" aria-label="Next">›</button></div>`
         : `<label class="check" style="margin:0"><input type="checkbox" data-act="cal-past" ${c.past ? 'checked' : ''}> Show past</label>`}
       <div class="seg" role="group" aria-label="Calendar view">${['month', 'week', 'agenda'].map((v) => `<button data-act="cal-view" data-v="${v}" class="${c.view === v ? 'on' : ''}">${v === 'agenda' ? 'List' : v[0].toUpperCase() + v.slice(1)}</button>`).join('')}</div>
-      <select data-change="cal-project" aria-label="Filter by project"><option value="all">All projects</option>${opts}</select>
+      <select data-change="cal-project" aria-label="Filter by project"><option value="all">All ongoing projects</option><option value="everything" ${c.project === 'everything' ? 'selected' : ''}>All projects (incl. paused &amp; completed)</option>${opts}</select>
       ${state.edit ? `<button class="btn sm" data-act="new-leave" data-date="${c.view === 'month' ? c.day : ymd(new Date())}">＋ Day off</button><button class="btn sm primary" data-act="new-stage" data-date="${c.view === 'month' ? c.day : ymd(new Date())}">＋ Stage</button>` : ''}
     </div>
     ${body}
-    <div style="margin-top:12px">${legend()}</div>`;
+    <div style="margin-top:12px">${calLegend()}</div>`;
 }
 
 function monthView(cur, items) {
@@ -598,7 +629,7 @@ function monthView(cur, items) {
     const evs = itemsOnDay(items, d);
     cells.push(`<div class="mday ${d.getMonth() !== cur.getMonth() ? 'other' : ''} ${key === today ? 'today' : ''} ${key === state.cal.day ? 'sel' : ''}" data-act="cal-day" data-date="${key}">
       <div class="dnum">${d.getDate()}</div>
-      ${evs.slice(0, 3).map((x) => `<button class="chip st-${x.st}" data-act="open-stage" data-id="${x.s.id}" title="${esc(x.s.name)}">${!x.s.allDay && x.s.date === key ? `${x.s.start} ` : ''}${esc(x.s.name)}</button>`).join('')}
+      ${evs.slice(0, 3).map((x) => calChip(x, `${!x.s.allDay && x.s.date === key ? `${x.s.start} ` : ''}${esc(x.s.name)}`)).join('')}
       ${evs.length > 3 ? `<div class="more">+${evs.length - 3} more</div>` : ''}
     </div>`);
   }
@@ -641,7 +672,7 @@ function weekView(first, n, items) {
   const head = days.map((d) => `<div class="${ymd(d) === today ? 'today' : ''}">${fmt(d, { weekday: 'short' })}<b>${d.getDate()}</b></div>`).join('');
   const allday = days.map((d) => {
     const evs = itemsOnDay(items, d).filter((x) => !isSingleDayTimed(x.s));
-    return `<div>${evs.map((x) => `<button class="chip st-${x.st}" data-act="open-stage" data-id="${x.s.id}" style="font-size:.7rem;height:auto;padding:2px 5px;background:var(--st-bg);border-left:3px solid var(--st)">${esc(x.s.name)}</button>`).join('')}</div>`;
+    return `<div>${evs.map((x) => calChip(x, esc(x.s.name), 'wide')).join('')}</div>`;
   }).join('');
   const cols = days.map((d) => {
     const key = ymd(d);
@@ -651,8 +682,8 @@ function weekView(first, n, items) {
     }));
     const blocks = evs.map((ev) => {
       const w = 100 / ev.ncol;
-      return `<div class="ev st-${ev.st}" data-act="open-stage" data-id="${ev.s.id}" style="top:${(ev.a / 60) * HOUR_H}px;height:${Math.max(((ev.b - ev.a) / 60) * HOUR_H - 2, 20)}px;left:calc(${w * ev.col}% + 2px);width:calc(${w}% - 4px);right:auto">
-        <b><span class="pdot" style="background:${esc(projColor(ev.p))}"></span>${esc(ev.s.name)}</b>${esc(ev.s.start)}–${esc(ev.s.end || fromMin(ev.b))}</div>`;
+      return `<div class="ev st-${ev.st}" data-act="open-stage" data-id="${ev.s.id}" title="${esc(`${ev.s.name} · ${ev.p.title} · ${stInfo(ev.s, ev.st).label}`)}" style="--pc:${esc(projColor(ev.p))};top:${(ev.a / 60) * HOUR_H}px;height:${Math.max(((ev.b - ev.a) / 60) * HOUR_H - 2, 20)}px;left:calc(${w * ev.col}% + 2px);width:calc(${w}% - 4px);right:auto">
+        <b>${STATUS_DOT.has(ev.st) ? '<span class="sdot" aria-hidden="true"></span>' : ''}${esc(ev.s.name)}</b>${esc(ev.s.start)}–${esc(ev.s.end || fromMin(ev.b))}</div>`;
     }).join('');
     const nowLine = key === today ? `<div class="now-line" style="top:${((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR_H}px"></div>` : '';
     return `<div class="wk-col ${key === today ? 'today' : ''}" data-act="cal-slot" data-date="${key}">${blocks}${nowLine}</div>`;
@@ -706,10 +737,10 @@ function render() {
   const { meta } = state.data;
   document.title = route.name === 'project' ? `${findProject(route.id)?.title || 'Project'} · ${meta.title}` : meta.title;
   $('#brand-title').textContent = meta.title;
-  $$('.tabs [data-tab]').forEach((a) => a.classList.toggle('active', a.dataset.tab === (route.name === 'calendar' ? 'calendar' : route.name === 'report' ? '' : 'dashboard')));
+  $$('.tabs [data-tab]').forEach((a) => a.classList.toggle('active', a.dataset.tab === (['calendar', 'completed'].includes(route.name) ? route.name : route.name === 'project' && findProject(route.id)?.status === 'completed' ? 'completed' : route.name === 'report' ? '' : 'dashboard')));
 
   // top actions
-  let actions = '';
+  let actions = '<button class="btn sm" data-act="share" aria-label="Share visitor link">🔗<span class="lbl-long"> Share</span></button>';
   if (state.owner) {
     if (state.dirty) actions += '<button class="btn sm primary pulse" data-act="publish">⬆ Publish</button>';
     actions += state.edit
@@ -731,6 +762,7 @@ function render() {
   v.innerHTML = route.name === 'project' ? viewProject(route.id)
     : route.name === 'calendar' ? viewCalendar()
     : route.name === 'report' ? viewReport(route.id)
+    : route.name === 'completed' ? viewCompleted()
     : viewDashboard();
   const wk = $('#wk-scroll');
   if (wk) wk.scrollTop = scroll ?? Math.max(0, (Math.min(new Date().getHours(), 16) - 1) * HOUR_H - 20) ;
@@ -841,7 +873,7 @@ function openStageForm({ id, pid, date, start } = {}) {
   const found = id ? findStage(id) : null;
   const s = found ? found.s : { name: '', notes: '', conditions: [''], date: date || '', endDate: '', start: start || '', end: start ? fromMin(Math.min(toMin(start) + 120, 23 * 60 + 59)) : '', allDay: !start, outcome: null, comment: '', kind: 'holiday' };
   const research = state.data.projects.filter((p) => !isLeave(p));
-  const projectId = found ? found.p.id : pid || (state.cal.project !== 'all' ? state.cal.project : research.find((p) => p.status === 'ongoing')?.id || research[0]?.id || state.data.projects[0]?.id);
+  const projectId = found ? found.p.id : pid || (findProject(state.cal.project) ? state.cal.project : research.find((p) => p.status === 'ongoing')?.id || research[0]?.id || state.data.projects[0]?.id);
   if (!state.data.projects.length) { toast('Create a project first'); openProjectForm(); return; }
   const conds = s.conditions.length ? [...s.conditions] : [''];
   const condRow = (v, i) => `<div class="cond-row"><span class="lab">Condition ${i + 1}</span><textarea name="cond" rows="1" placeholder="e.g. 35 °C, pH 7, 3 replicates">${esc(v)}</textarea><button type="button" class="icon-btn" data-rm aria-label="Remove condition">✕</button></div>`;
@@ -1074,6 +1106,30 @@ function openOwnerSignIn() {
   });
 }
 
+// The view-only link for visitors: this page without ?admin or any route.
+const viewerUrl = () => `${location.origin}${location.pathname.replace(/index\.html$/, '')}`;
+function openShare() {
+  const url = viewerUrl();
+  openModal({
+    title: 'Share with visitors',
+    body: `<p class="muted small" style="margin-top:0">Anyone with this link can follow your progress. It is view-only — nobody can edit through it.</p>
+      <input type="text" id="share-url" readonly value="${esc(url)}" aria-label="Visitor link">`,
+    footer: `${navigator.share ? '<button class="btn" id="share-native">Share…</button>' : ''}<button class="btn primary" id="share-copy">Copy link</button>`,
+    onMount(m) {
+      const input = $('#share-url', m);
+      input.addEventListener('focus', () => input.select());
+      $('#share-copy', m).addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(url); }
+        catch { input.focus(); input.setSelectionRange(0, url.length); document.execCommand('copy'); }
+        toast('Link copied ✓');
+      });
+      $('#share-native', m)?.addEventListener('click', () => {
+        navigator.share({ title: state.data.meta.title, text: `${state.data.meta.title} — research progress`, url }).catch(() => {});
+      });
+    },
+  });
+}
+
 function duplicateStage(id) {
   const f = findStage(id); if (!f) return;
   const copy = { ...structuredClone(f.s), id: uid('s'), name: /\(repeat\)$/.test(f.s.name) ? f.s.name : `${f.s.name} (repeat)`, outcome: null, comment: '', date: '', endDate: '' };
@@ -1105,6 +1161,7 @@ const actions = {
   },
   print() { window.print(); },
   'new-project'() { openProjectForm(); },
+  share() { openShare(); },
   'new-leave'(el) {
     closeModal();
     let p = state.data.projects.find(isLeave);
