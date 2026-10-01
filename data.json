@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-01T11:03:51.869Z"
+    "updated": "2026-10-01T11:35:52.992Z"
   },
   "projects": [
     {
@@ -64,7 +64,7 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": "done",
+          "outcome": null,
           "comment": "",
           "updatedAt": "2026-10-01T10:56:15.902Z"
         },
@@ -78,9 +78,35 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": "done",
+          "outcome": null,
           "comment": "",
           "updatedAt": "2026-10-01T10:57:56.650Z"
+        },
+        {
+          "id": "s_jetidl9phx",
+          "name": "Writing conclusion",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-13",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_dsnsh9cew3",
+          "name": "Writing introduction #1",
+          "notes": "scCO2 emulsion in microfluidic process",
+          "conditions": [],
+          "date": "2026-10-13",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "type": "research"
@@ -183,20 +209,6 @@
           "updatedAt": "2026-10-01T02:24:53.819Z"
         },
         {
-          "id": "s_r5wltmvox4",
-          "name": "Setting up remote control to mini PC (repeat)",
-          "notes": "Connecting camera to mini PC.\nSetting remote control from my PC to mini PC",
-          "conditions": [],
-          "date": "",
-          "endDate": "",
-          "allDay": true,
-          "start": "",
-          "end": "",
-          "outcome": null,
-          "comment": "",
-          "updatedAt": "2026-10-01T02:24:53.819Z"
-        },
-        {
           "id": "s_q2jz5o3hv9",
           "name": "Data collection: IFT in water/hexane system",
           "notes": "Exp. data used as predicted variable",
@@ -217,6 +229,48 @@
           "conditions": [],
           "date": "2026-10-09",
           "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_r5wltmvox4",
+          "name": "Setting up remote control to mini PC (repeat)",
+          "notes": "Setting remote control from my PC to mini PC",
+          "conditions": [],
+          "date": "2026-10-12",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": "",
+          "updatedAt": "2026-10-01T02:24:53.819Z"
+        },
+        {
+          "id": "s_h3cc7c3o8v",
+          "name": "(Demo) Rapid slug measurement",
+          "notes": "Operate with mini PC\n(If possible) operate from main PC remotely",
+          "conditions": [],
+          "date": "2026-10-12",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_55zv5pf3bn",
+          "name": "Slug measurement",
+          "notes": "",
+          "conditions": [
+            "To be decided with Theavy"
+          ],
+          "date": "2026-10-14",
+          "endDate": "2026-10-16",
           "allDay": true,
           "start": "",
           "end": "",
@@ -692,6 +746,20 @@
           "start": "",
           "end": "",
           "kind": "personal",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_h9y366hpfr",
+          "name": "Sports day",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-12",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "kind": "holiday",
           "outcome": null,
           "comment": ""
         }
