@@ -561,7 +561,8 @@ const calProjects = () => byColor().filter((p) => isLeave(p) || p.status === 'on
 function calItems() {
   const f = state.cal.project;
   const shown = new Set(calProjects().map((p) => p.id));
-  return allItems((p) => (f === 'all' ? shown.has(p.id) : p.id === f)).filter((x) => x.r);
+  // 'everything' also includes paused and completed projects (overall workload).
+  return allItems((p) => (f === 'everything' ? true : f === 'all' ? shown.has(p.id) : p.id === f)).filter((x) => x.r);
 }
 // Calendar bars use the project's colour; the status is a small dot on the bar.
 const STATUS_DOT = new Set(['upcoming', 'inprogress', 'done', 'failed', 'overdue']);
@@ -570,7 +571,8 @@ function calChip(x, label, cls = '') {
   return `<button class="chip st-${x.st} ${cls}" style="--pc:${esc(projColor(x.p))}" data-act="open-stage" data-id="${x.s.id}" title="${esc(`${x.s.name} · ${x.p.title} · ${info.label}`)}">${STATUS_DOT.has(x.st) ? '<span class="sdot" aria-hidden="true"></span>' : ''}${label}</button>`;
 }
 function calLegend() {
-  const ps = calProjects().filter((p) => state.cal.project === 'all' || p.id === state.cal.project);
+  const f = state.cal.project;
+  const ps = f === 'everything' ? byColor() : f === 'all' ? calProjects() : byColor().filter((p) => p.id === f);
   return `<div class="legend cal-legend">${ps.map((p) => `<span><i class="pswatch" style="--pc:${esc(projColor(p))}"></i>${esc(p.title)}</span>`).join('')}</div>
     <div class="legend cal-legend" style="margin-top:6px">${['upcoming', 'done', 'failed', 'overdue'].map((k) => `<span class="st-${k}"><span class="sdot"></span>${STATUS[k].label}</span>`).join('')}<span class="muted">No dot = planned later</span></div>`;
 }
@@ -600,7 +602,7 @@ function viewCalendar() {
     body = agendaView(items);
   }
   const listed = calProjects();
-  const sel = c.project !== 'all' && !listed.some((p) => p.id === c.project) ? findProject(c.project) : null;
+  const sel = !['all', 'everything'].includes(c.project) && !listed.some((p) => p.id === c.project) ? findProject(c.project) : null;
   const opts = [...listed, ...(sel ? [sel] : [])].map((p) => `<option value="${esc(p.id)}" ${c.project === p.id ? 'selected' : ''}>${esc(p.title)}</option>`).join('');
   return `
     <div class="cal-toolbar">
@@ -608,7 +610,7 @@ function viewCalendar() {
       ${c.view !== 'agenda' ? `<div class="row"><button class="btn sm" data-act="cal-nav" data-d="-1" aria-label="Previous">‹</button><button class="btn sm" data-act="cal-today">Today</button><button class="btn sm" data-act="cal-nav" data-d="1" aria-label="Next">›</button></div>`
         : `<label class="check" style="margin:0"><input type="checkbox" data-act="cal-past" ${c.past ? 'checked' : ''}> Show past</label>`}
       <div class="seg" role="group" aria-label="Calendar view">${['month', 'week', 'agenda'].map((v) => `<button data-act="cal-view" data-v="${v}" class="${c.view === v ? 'on' : ''}">${v === 'agenda' ? 'List' : v[0].toUpperCase() + v.slice(1)}</button>`).join('')}</div>
-      <select data-change="cal-project" aria-label="Filter by project"><option value="all">All ongoing projects</option>${opts}</select>
+      <select data-change="cal-project" aria-label="Filter by project"><option value="all">All ongoing projects</option><option value="everything" ${c.project === 'everything' ? 'selected' : ''}>All projects (incl. paused &amp; completed)</option>${opts}</select>
       ${state.edit ? `<button class="btn sm" data-act="new-leave" data-date="${c.view === 'month' ? c.day : ymd(new Date())}">＋ Day off</button><button class="btn sm primary" data-act="new-stage" data-date="${c.view === 'month' ? c.day : ymd(new Date())}">＋ Stage</button>` : ''}
     </div>
     ${body}
@@ -871,7 +873,7 @@ function openStageForm({ id, pid, date, start } = {}) {
   const found = id ? findStage(id) : null;
   const s = found ? found.s : { name: '', notes: '', conditions: [''], date: date || '', endDate: '', start: start || '', end: start ? fromMin(Math.min(toMin(start) + 120, 23 * 60 + 59)) : '', allDay: !start, outcome: null, comment: '', kind: 'holiday' };
   const research = state.data.projects.filter((p) => !isLeave(p));
-  const projectId = found ? found.p.id : pid || (state.cal.project !== 'all' ? state.cal.project : research.find((p) => p.status === 'ongoing')?.id || research[0]?.id || state.data.projects[0]?.id);
+  const projectId = found ? found.p.id : pid || (findProject(state.cal.project) ? state.cal.project : research.find((p) => p.status === 'ongoing')?.id || research[0]?.id || state.data.projects[0]?.id);
   if (!state.data.projects.length) { toast('Create a project first'); openProjectForm(); return; }
   const conds = s.conditions.length ? [...s.conditions] : [''];
   const condRow = (v, i) => `<div class="cond-row"><span class="lab">Condition ${i + 1}</span><textarea name="cond" rows="1" placeholder="e.g. 35 °C, pH 7, 3 replicates">${esc(v)}</textarea><button type="button" class="icon-btn" data-rm aria-label="Remove condition">✕</button></div>`;
