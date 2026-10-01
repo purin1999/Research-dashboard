@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-09-30T14:44:31.307Z"
+    "updated": "2026-10-01T00:44:37.987Z"
   },
   "projects": [
     {
@@ -217,6 +217,19 @@
           "end": "",
           "outcome": null,
           "comment": ""
+        },
+        {
+          "id": "s_6hcrbwqmus",
+          "name": "Meeting with Dr.Nui @Chulalongkorn university",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-05",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "type": "research"
@@ -374,6 +387,34 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-09-30T09:08:52.815Z"
+        },
+        {
+          "id": "s_qhfwn44f4c",
+          "name": "Conference slide",
+          "notes": "Result and discussion",
+          "conditions": [],
+          "date": "2026-08-26",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "failed",
+          "comment": "Data of AgNP size (pressure varied) is insufficient. Required more experiments.",
+          "updatedAt": "2026-10-01T00:14:53.186Z"
+        },
+        {
+          "id": "s_oro9c2bakj",
+          "name": "Conference slide",
+          "notes": "Background\nMethodology",
+          "conditions": [],
+          "date": "2026-08-25",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-01T00:17:09.116Z"
         }
       ],
       "type": "research"
