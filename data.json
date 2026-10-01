@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-01T23:40:57.117Z"
+    "updated": "2026-10-01T23:42:31.279Z"
   },
   "projects": [
     {
@@ -965,7 +965,7 @@
     {
       "id": "p_meeting01",
       "title": "Meeting",
-      "description": "Regular meetings with the professor and lab members, and slide preparation for them.",
+      "description": "Appointment and Summary",
       "status": "ongoing",
       "color": "#0ea5e9",
       "type": "event",
