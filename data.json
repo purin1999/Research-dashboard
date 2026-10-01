@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-01T10:37:26.530Z"
+    "updated": "2026-10-01T11:03:51.869Z"
   },
   "projects": [
     {
@@ -25,6 +25,62 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-10-01T10:30:06.682Z"
+        },
+        {
+          "id": "s_l9ev4ot1rd",
+          "name": "Writing methodology #1",
+          "notes": "Emulsion formation and DLS technique",
+          "conditions": [],
+          "date": "2026-09-03",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-01T10:46:48.798Z"
+        },
+        {
+          "id": "s_6dcpv0vu0u",
+          "name": "Writing methodology #2",
+          "notes": "Calculation within DLS\nscCO2 viscosity estimation with COSMO-vac",
+          "conditions": [],
+          "date": "2026-09-04",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-01T10:48:58.966Z"
+        },
+        {
+          "id": "s_3d6q4y2gn0",
+          "name": "Writing result #1",
+          "notes": "Droplet size against pressure\nDroplet size against w/CO2 ratio",
+          "conditions": [],
+          "date": "2026-10-06",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-01T10:56:15.902Z"
+        },
+        {
+          "id": "s_9td8r07bqd",
+          "name": "Writing result #2",
+          "notes": "Droplet size against emulsifier concentration\nDroplet size against emulsifier species",
+          "conditions": [],
+          "date": "2026-10-07",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-01T10:57:56.650Z"
         }
       ],
       "type": "research"
@@ -153,6 +209,19 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-10-01T02:31:08.465Z"
+        },
+        {
+          "id": "s_51hwhieyi2",
+          "name": "Meeting with Theavy",
+          "notes": "Data sharing\nFuture scheduling about experiment",
+          "conditions": [],
+          "date": "2026-10-09",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "type": "research"
@@ -595,6 +664,34 @@
           "start": "",
           "end": "",
           "kind": "holiday",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_x98rsx3kd7",
+          "name": "Flight to Thailand",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-09-26",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "kind": "personal",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_yxr97s4m48",
+          "name": "Flight to Tokyo",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-08",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "kind": "personal",
           "outcome": null,
           "comment": ""
         }
