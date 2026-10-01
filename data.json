@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-01T23:33:21.186Z"
+    "updated": "2026-10-01T23:40:57.117Z"
   },
   "projects": [
     {
@@ -608,6 +608,32 @@
           "end": "",
           "outcome": null,
           "comment": ""
+        },
+        {
+          "id": "s_ecucj0r1ao",
+          "name": "All meeting",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-09",
+          "endDate": "",
+          "allDay": false,
+          "start": "11:00",
+          "end": "12:00",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_k0eajj483b",
+          "name": "Wrapping up for conference",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-29",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "type": "event"
@@ -945,24 +971,11 @@
       "type": "event",
       "stages": [
         {
-          "id": "s_ecucj0r1ao",
-          "name": "All meeting",
+          "id": "s_9rvnya582d",
+          "name": "Conference (expected)",
           "notes": "",
           "conditions": [],
-          "date": "2026-10-09",
-          "endDate": "",
-          "allDay": false,
-          "start": "11:00",
-          "end": "12:00",
-          "outcome": null,
-          "comment": ""
-        },
-        {
-          "id": "s_k0eajj483b",
-          "name": "Wrapping up for conference",
-          "notes": "",
-          "conditions": [],
-          "date": "2026-10-29",
+          "date": "2026-10-30",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -971,11 +984,11 @@
           "comment": ""
         },
         {
-          "id": "s_9rvnya582d",
-          "name": "Conference (expected date)",
+          "id": "s_sc4ue3e7hl",
+          "name": "Meeting (expected)",
           "notes": "",
           "conditions": [],
-          "date": "2026-10-30",
+          "date": "2026-10-09",
           "endDate": "",
           "allDay": true,
           "start": "",
