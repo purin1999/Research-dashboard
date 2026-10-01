@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin research",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-01T15:14:34.889Z"
+    "updated": "2026-10-01T23:33:21.186Z"
   },
   "projects": [
     {
@@ -410,9 +410,49 @@
       "id": "p_1ejh20d1z8",
       "title": "COSMO vacancy paper",
       "description": "Collabs with Murakami sensei",
-      "status": "paused",
+      "status": "ongoing",
       "color": "#14b8a6",
-      "stages": [],
+      "stages": [
+        {
+          "id": "s_57bowsfpuf",
+          "name": "Revision from Shimoyama and Murakami sensei",
+          "notes": "",
+          "conditions": [],
+          "date": "",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_mmx3yyimwa",
+          "name": "Cover letter",
+          "notes": "",
+          "conditions": [],
+          "date": "",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_8xygs1i6w9",
+          "name": "Final check",
+          "notes": "",
+          "conditions": [],
+          "date": "",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        }
+      ],
       "type": "research"
     },
     {
@@ -526,8 +566,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-01T23:33:19.615Z"
         },
         {
           "id": "s_6hcrbwqmus",
