@@ -996,7 +996,9 @@
           "outcome": null,
           "comment": ""
         }
-      ]
+      ],
+      "top": true,
+      "comments": true
     }
   ]
 }

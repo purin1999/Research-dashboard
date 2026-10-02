@@ -64,6 +64,8 @@ const state = {
 function normalize(d) {
   const data = d && typeof d === 'object' ? d : {};
   data.meta = { title: 'Research Progress', subtitle: '', updated: '', ...(data.meta || {}) };
+  data.meta.comments = { url: '', key: '', ...(data.meta.comments || {}) };
+  data.meta.hiddenComments = Array.isArray(data.meta.hiddenComments) ? data.meta.hiddenComments : [];
   data.projects = Array.isArray(data.projects) ? data.projects : [];
   for (const p of data.projects) {
     p.id ||= uid('p');
@@ -73,6 +75,8 @@ function normalize(d) {
     p.color ||= COLORS[0];
     p.type = ['leave', 'event'].includes(p.type) ? p.type : 'research';
     if (p.type !== 'research') p.status = 'ongoing';
+    p.top = p.type === 'event' && !!p.top;            // event shown at the top of the dashboard
+    p.comments = p.type === 'event' && !!p.comments;  // visitors may comment on its entries
     p.stages = Array.isArray(p.stages) ? p.stages : [];
     for (const s of p.stages) {
       s.id ||= uid('s');
@@ -408,53 +412,72 @@ function viewDashboard() {
   const projects = all.filter(isResearch);
   const leave = all.filter(isLeave);
   const events = all.filter(isEvent);
+  const topEvents = events.filter((p) => p.top);
+  const otherEvents = events.filter((p) => !p.top);
   const now = new Date();
   const ongoing = projects.filter((p) => p.status === 'ongoing');
-  const paused = projects.filter((p) => p.status === 'paused');
-  const completed = projects.filter((p) => p.status === 'completed');
+  const inactive = projects.filter((p) => p.status !== 'ongoing');
   const overdue = allItems().filter((x) => x.st === 'overdue').sort((a, b) => a.r.start - b.r.start);
   const in7 = addDays(now, 7);
-  const soon = allItems((p) => p.status !== 'completed').filter((x) => x.r && x.r.end >= now && !x.s.outcome && x.r.start <= in7).sort((a, b) => a.r.start - b.r.start);
-  const totals = [...ongoing, ...paused].reduce((t, p) => { const c = progressOf(p); t.done += c.done; t.counted += c.counted; return t; }, { done: 0, counted: 0 });
+  const soon = allItems((p) => isLeave(p) || isEvent(p) || p.status === 'ongoing').filter((x) => x.r && x.r.end >= now && !x.s.outcome && x.r.start <= in7).sort((a, b) => a.r.start - b.r.start);
 
   return `
     <div class="page-head">
       <div><h1>${esc(meta.title)}</h1>${meta.subtitle ? `<div class="sub">${esc(meta.subtitle)}</div>` : ''}</div>
-      <span class="spacer"></span>
-      ${state.edit ? '<button class="btn" data-act="new-leave">＋ Day off</button><button class="btn primary" data-act="new-project">＋ New project</button>' : ''}
     </div>
     <div class="stats">
       <div class="card stat"><div class="k">Ongoing projects</div><div class="v">${ongoing.length}</div></div>
-      <div class="card stat"><div class="k">Stages completed</div><div class="v">${totals.done}<small> / ${totals.counted}</small></div></div>
-      <div class="card stat"><div class="k">Next 7 days</div><div class="v">${soon.filter((x) => x.r.start <= in7 && x.st !== 'off').length}</div></div>
-      <div class="card stat ${overdue.length ? 'warn' : ''}"><div class="k">Awaiting update</div><div class="v">${overdue.length}</div></div>
+      <div class="card stat"><div class="k">Upcoming tasks</div><div class="v">${soon.filter((x) => x.st !== 'off').length}</div></div>
+      <div class="card stat ${overdue.length ? 'warn' : ''}"><div class="k">Updates</div><div class="v">${overdue.length}</div></div>
     </div>
 
     ${overdue.length ? `<div class="section-title">${state.edit ? 'Needs your update' : 'Awaiting update'} <span class="count">${overdue.length}</span></div>
       <div class="mini-list">${overdue.map((x) => miniRow(x, true)).join('')}</div>` : ''}
 
-    <div class="section-title">Ongoing projects <span class="count">${ongoing.length}</span></div>
-    ${ongoing.length ? `<div class="projects">${ongoing.map(projectCard).join('')}</div>`
-      : `<div class="card empty">No ongoing projects yet.${state.edit ? '<br><button class="btn primary" data-act="new-project">＋ Create your first project</button>' : ''}</div>`}
+    ${topEvents.map(topEventSection).join('')}
 
     ${soon.length ? `<div class="section-title">Coming up · next 7 days</div><div class="mini-list">${soon.map((x) => miniRow(x)).join('')}</div>` : ''}
 
-    ${events.length ? `<div class="section-title">Special events</div><div class="projects">${events.map(eventCard).join('')}</div>` : ''}
+    <div class="section-title">Ongoing projects <span class="count">${ongoing.length}</span></div>
+    ${ongoing.length ? `<div class="projects">${ongoing.map(projectCard).join('')}</div>`
+      : '<div class="card empty">No ongoing projects yet.</div>'}
+    ${state.edit ? '<div class="row" style="margin-top:12px"><button class="btn primary" data-act="new-project">＋ New project</button></div>' : ''}
 
-    ${paused.length ? `<div class="section-title">Paused <span class="count">${paused.length}</span></div><div class="projects">${paused.map(projectCard).join('')}</div>` : ''}
+    ${otherEvents.length ? `<div class="section-title">Special events</div><div class="projects">${otherEvents.map(eventCard).join('')}</div>` : ''}
 
-    ${leave.length ? `<div class="section-title">Holidays &amp; leave</div><div class="projects">${leave.map(leaveCard).join('')}</div>` : ''}
+    ${leave.length || state.edit ? `<div class="section-title">Holidays &amp; leave</div>
+      ${leave.length ? `<div class="projects">${leave.map(leaveCard).join('')}</div>` : ''}
+      ${state.edit ? '<div class="row" style="margin-top:12px"><button class="btn" data-act="new-leave">＋ Day off</button></div>' : ''}` : ''}
 
-    ${completed.length ? `<a class="card archive-link" href="#/completed"><span class="ico">✓</span><span><b>Completed projects</b><br><span class="muted small">${completed.length} project${completed.length > 1 ? 's' : ''} · moved out of the dashboard</span></span><span class="spacer"></span><span aria-hidden="true">›</span></a>` : ''}
+    ${inactive.length ? `<a class="card archive-link" href="#/completed"><span class="ico">🗂</span><span><b>Paused &amp; completed projects</b><br><span class="muted small">${inactive.length} project${inactive.length > 1 ? 's' : ''} · in the Archive tab</span></span><span class="spacer"></span><span aria-hidden="true">›</span></a>` : ''}
     <div style="margin-top:18px">${legend()}</div>`;
 }
 
+// A special event pinned to the top of the dashboard (e.g. Meeting):
+// the two most recent entries and the next one.
+function topEventSection(p) {
+  const now = new Date();
+  const items = p.stages.map((s) => ({ p, s, st: statusOf(s), r: stageRange(s) })).filter((x) => x.r).sort((a, b) => a.r.start - b.r.start);
+  const past = items.filter((x) => x.r.end < now).slice(-2);
+  const next = items.filter((x) => x.r.end >= now).slice(0, 1);
+  const rows = [...past, ...next];
+  return `<div class="section-title">📌 ${esc(p.title)}<span class="spacer"></span><a class="small" href="#/project/${encodeURIComponent(p.id)}" style="text-transform:none;letter-spacing:0">All ›</a></div>
+    ${rows.length ? `<div class="mini-list">${rows.map((x) => miniRow(x)).join('')}</div>` : `<div class="card empty" style="padding:16px">Nothing scheduled yet.</div>`}
+    ${p.comments ? '<p class="muted small" style="margin:6px 2px 0">💬 Tap a meeting to read or add comments.</p>' : ''}
+    ${state.edit ? `<div class="row" style="margin-top:10px"><button class="btn sm" data-act="new-stage" data-pid="${p.id}">＋ Add ${esc(p.title.toLowerCase())}</button></div>` : ''}`;
+}
+
 function viewCompleted() {
-  const done = byColor().filter((p) => isResearch(p) && p.status === 'completed');
+  const list = byColor().filter(isResearch);
+  const paused = list.filter((p) => p.status === 'paused');
+  const done = list.filter((p) => p.status === 'completed');
   return `
-    <div class="page-head"><div><h1>Completed projects</h1><div class="sub">Finished projects are kept here so the dashboard stays short.</div></div></div>
+    <div class="page-head"><div><h1>Archive</h1><div class="sub">Paused and completed projects are kept here so the dashboard stays short.</div></div></div>
+    <div class="section-title">Paused <span class="count">${paused.length}</span></div>
+    ${paused.length ? `<div class="projects">${paused.map(projectCard).join('')}</div>` : '<p class="muted small">No paused projects.</p>'}
+    <div class="section-title">Completed <span class="count">${done.length}</span></div>
     ${done.length ? `<div class="projects">${done.map(projectCard).join('')}</div>`
-      : '<div class="card empty">No completed projects yet.<br><span class="small">Set a project’s status to <b>Completed</b> (✎ Edit project) to move it here.</span></div>'}`;
+      : '<p class="muted small">No completed projects yet. Set a project’s status to <b>Completed</b> (✎ Edit project) to move it here.</p>'}`;
 }
 
 function projectCard(p) {
@@ -783,7 +806,7 @@ function render() {
   const { meta } = state.data;
   document.title = route.name === 'project' ? `${findProject(route.id)?.title || 'Project'} · ${meta.title}` : meta.title;
   $('#brand-title').textContent = meta.title;
-  $$('.tabs [data-tab]').forEach((a) => a.classList.toggle('active', a.dataset.tab === (['calendar', 'completed'].includes(route.name) ? route.name : route.name === 'project' && findProject(route.id)?.status === 'completed' ? 'completed' : route.name === 'report' ? '' : 'dashboard')));
+  $$('.tabs [data-tab]').forEach((a) => a.classList.toggle('active', a.dataset.tab === (['calendar', 'completed'].includes(route.name) ? route.name : route.name === 'project' && findProject(route.id) && isResearch(findProject(route.id)) && findProject(route.id)?.status !== 'ongoing' ? 'completed' : route.name === 'report' ? '' : 'dashboard')));
 
   // top actions
   let actions = '<button class="btn sm" data-act="share" aria-label="Share visitor link">🔗<span class="lbl-long"> Share</span></button>';
@@ -859,10 +882,12 @@ function openStage(id) {
       <div class="row"><span class="mini" style="padding:0;background:none;border:0;cursor:auto"><span class="dot" style="background:${esc(projColor(p))}"></span></span><a href="#/project/${encodeURIComponent(p.id)}" data-close-nav>${esc(p.title)}</a><span class="spacer"></span>${badge(st, s)}</div>
       <div class="when" style="font-size:.95rem">🗓 ${esc(fmtWhen(s))}</div>
       ${s.notes ? `<p class="notes">${esc(s.notes)}</p>` : ''}
-      ${s.conditions.length ? `<div class="st-${st}"><ol class="conds">${s.conditions.map((c, k) => `<li><b>Condition ${k + 1}</b><span>${esc(c)}</span></li>`).join('')}</ol></div>` : st === 'off' ? '' : '<p class="muted small">No experiment conditions listed.</p>'}
+      ${s.conditions.length ? `<div class="st-${st}"><ol class="conds">${s.conditions.map((c, k) => `<li><b>Condition ${k + 1}</b><span>${esc(c)}</span></li>`).join('')}</ol></div>` : isResearch(p) ? '<p class="muted small">No experiment conditions listed.</p>' : ''}
       ${s.comment ? `<div class="st-${st}"><div class="comment"><b>${s.outcome === 'failed' ? 'Why it did not go as planned' : 'Comment'}</b>${esc(s.comment)}</div></div>` : ''}
       ${st === 'overdue' ? `<div class="needs-update"><strong>The planned date has passed — did it go as planned?</strong></div>` : ''}
+      ${p.comments ? commentsBox() : ''}
     </div>`,
+    onMount: p.comments ? (m) => mountComments(m, s) : undefined,
     footer: E && st === 'off' ? `<button class="btn danger" data-act="delete-stage" data-id="${s.id}">Delete</button><span class="spacer"></span>
         <button class="btn primary" data-act="edit-stage" data-id="${s.id}">✎ Edit</button>`
       : E ? `<button class="btn danger" data-act="delete-stage" data-id="${s.id}">Delete</button><span class="spacer"></span>
@@ -871,6 +896,104 @@ function openStage(id) {
         <button class="btn primary" data-act="outcome" data-id="${s.id}">Update result</button>`
       : `<a class="btn" href="#/project/${encodeURIComponent(p.id)}" data-close-nav>Open project</a>`,
   });
+}
+
+// ---------------------------------------------------------------- visitor comments
+// Comments live in a Supabase table (free tier). The project URL and the public
+// "anon"/publishable key are stored in data.json; row-level security only allows
+// reading and adding comments. The owner hides unwanted ones via meta.hiddenComments.
+const COMMENTS_SQL = `create table public.comments (
+  id bigint generated always as identity primary key,
+  stage_id text not null check (char_length(stage_id) <= 64),
+  name text check (char_length(name) <= 60),
+  body text not null check (char_length(body) between 1 and 2000),
+  created_at timestamptz not null default now()
+);
+alter table public.comments enable row level security;
+grant select, insert on public.comments to anon;
+create policy "Anyone can read comments" on public.comments
+  for select to anon using (true);
+create policy "Anyone can add comments" on public.comments
+  for insert to anon with check (true);`;
+
+function commentsCfg() {
+  const c = state.data.meta.comments || {};
+  return c.url && c.key ? { url: c.url.trim().replace(/\/+$/, ''), key: c.key.trim() } : null;
+}
+async function sbFetch(path, opts = {}) {
+  const c = commentsCfg();
+  if (!c) throw new Error('Comments are not set up');
+  const headers = { apikey: c.key, 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (c.key.startsWith('eyJ')) headers.Authorization = `Bearer ${c.key}`; // legacy JWT anon key
+  const res = await fetch(`${c.url}/rest/v1/${path}`, { ...opts, headers, cache: 'no-store' });
+  if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message || `HTTP ${res.status}`); }
+  const text = await res.text(); // inserts with Prefer: return=minimal answer 201 with an empty body
+  return text ? JSON.parse(text) : null;
+}
+
+function commentsBox() {
+  return `<section class="comments">
+    <h3>💬 Comments from members</h3>
+    <div id="cm-list" class="cm-list"><p class="muted small">Loading comments…</p></div>
+    ${commentsCfg() ? `<form id="cm-form" class="cm-form" autocomplete="off">
+      <input type="text" name="name" maxlength="60" placeholder="Your name (optional — leave empty to stay anonymous)" aria-label="Your name (optional)">
+      <textarea name="body" required maxlength="2000" rows="3" placeholder="Write a comment…" aria-label="Comment"></textarea>
+      <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <div class="row"><span class="muted small">Visible to everyone who opens this dashboard.</span><span class="spacer"></span><button class="btn sm primary" type="submit">Post comment</button></div>
+    </form>` : ''}
+  </section>`;
+}
+
+function mountComments(m, s) {
+  const list = $('#cm-list', m); const form = $('#cm-form', m);
+  if (!commentsCfg()) {
+    list.innerHTML = `<p class="muted small">Comments aren't switched on yet.${state.owner ? ' Set them up in ⚙︎ Settings → Visitor comments.' : ''}</p>`;
+    return;
+  }
+  const hidden = () => new Set(state.data.meta.hiddenComments.map(String));
+  let rows = [];
+  const draw = () => {
+    const h = hidden();
+    const visible = rows.filter((r) => state.edit || !h.has(String(r.id)));
+    list.innerHTML = visible.length ? visible.map((r) => {
+      const isHidden = h.has(String(r.id));
+      return `<div class="cm ${isHidden ? 'cm-hidden' : ''}">
+        <div class="cm-head"><b>${esc(r.name || 'Anonymous')}</b><span class="muted small">${esc(new Date(r.created_at).toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' }))}</span>
+          ${state.edit ? `<span class="spacer"></span><button type="button" class="btn sm ghost" data-cm-toggle="${esc(r.id)}">${isHidden ? 'Unhide' : 'Hide'}</button>` : ''}</div>
+        <div class="cm-body">${esc(r.body)}</div>${isHidden ? '<div class="muted small">Hidden from visitors</div>' : ''}</div>`;
+    }).join('') : '<p class="muted small">No comments yet. Be the first!</p>';
+  };
+  const load = async () => {
+    try { rows = await sbFetch(`comments?stage_id=eq.${encodeURIComponent(s.id)}&select=id,name,body,created_at&order=created_at.asc`) || []; draw(); }
+    catch (e) { list.innerHTML = `<p class="muted small">Could not load comments (${esc(e.message)}).</p>`; }
+  };
+  list.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cm-toggle]'); if (!b) return;
+    e.stopPropagation();
+    const id = b.dataset.cmToggle; const arr = state.data.meta.hiddenComments.map(String);
+    state.data.meta.hiddenComments = arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
+    state.dirty = true; saveDraft(); draw(); render(); // render() refreshes the Publish button; the modal stays open
+    toast(arr.includes(id) ? 'Comment visible again — Publish to apply' : 'Comment hidden — Publish to apply');
+  });
+  if (form) {
+    form.name.value = store.get('rpd.cname', '') || '';
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (form.website.value) return; // spam bot honeypot
+      const body = form.body.value.trim(); const name = form.name.value.trim();
+      if (!body) { form.body.reportValidity(); return; }
+      const btn = $('[type=submit]', form); btn.disabled = true; btn.textContent = 'Posting…';
+      try {
+        await sbFetch('comments', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ stage_id: s.id, name: name || null, body }) });
+        store.set('rpd.cname', name);
+        form.body.value = '';
+        toast('Comment posted ✓');
+        await load();
+      } catch (err) { toast(`Could not post: ${err.message}`, 5000); }
+      btn.disabled = false; btn.textContent = 'Post comment';
+    });
+  }
+  load();
 }
 
 function openOutcome(id, preset) {
@@ -1018,6 +1141,8 @@ function openProjectForm(id) {
       <div class="field"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Colour</span>
         <div class="swatches">${COLORS.map((c) => `<label><input type="radio" name="color" value="${c}" ${c === color ? 'checked' : ''}><span style="background:${c}"></span></label>`).join('')}</div></div>
       <p class="help" style="margin-top:6px">Projects with the same colour are grouped together on the dashboard.</p></div>
+      <label class="check ev-only"><input type="checkbox" name="top" ${p?.top ? 'checked' : ''}> Show at the top of the dashboard (last 2 + next entry)</label>
+      <label class="check ev-only"><input type="checkbox" name="comments" ${p?.comments ? 'checked' : ''}> Allow visitor comments on its entries</label>
       <p class="help ev-only">Regular meetings, slide preparation, seminars and other activities. Entries keep their status colours and update prompts, but the event isn't counted as an ongoing project.</p>
       <p class="help leave-only">Holidays, personal appointments and university closures. They always show in white and never ask whether they went as planned.</p>
     </form>`,
@@ -1036,7 +1161,7 @@ function openProjectForm(id) {
         e.preventDefault();
         const fd = new FormData(e.target);
         const type = ['leave', 'event'].includes(fd.get('type')) ? fd.get('type') : 'research';
-        const v = { title: fd.get('title').trim(), description: fd.get('description').trim(), type, status: type === 'research' ? fd.get('status') : 'ongoing', color: fd.get('color') || color };
+        const v = { title: fd.get('title').trim(), description: fd.get('description').trim(), type, status: type === 'research' ? fd.get('status') : 'ongoing', color: fd.get('color') || color, top: type === 'event' && !!fd.get('top'), comments: type === 'event' && !!fd.get('comments') };
         if (type === 'leave' && p && !isLeave(p) && p.stages.length && !confirm('Turn this project into “Holiday & leave”? Its stages will lose their results and conditions.')) return;
         if (type === 'leave') for (const st of p?.stages || []) { st.outcome = null; st.conditions = []; st.comment = ''; st.kind ||= 'other'; }
         if (p) Object.assign(p, v);
@@ -1070,6 +1195,12 @@ function openSettings(note = '') {
       <p class="help">Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a> limited to this one repository with <b>Contents: Read and write</b>.</p>
       <div class="row"><button type="button" class="btn sm" id="gh-load">⬇ Load latest from GitHub</button>${g.token ? '<button type="button" class="btn sm danger" id="gh-forget">Forget token</button>' : ''}</div>
 
+      <h3 style="margin:18px 0 6px">Visitor comments</h3>
+      <p class="help" style="margin:0 0 12px">Comments on meeting entries are stored in a free <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">Supabase</a> project. See the README for the 5-minute setup. These two values are public by design and are published with the dashboard.</p>
+      <label class="field"><span>Supabase project URL</span><input type="text" name="sbUrl" value="${esc(meta.comments.url)}" placeholder="https://xxxx.supabase.co" autocapitalize="off" spellcheck="false"></label>
+      <label class="field"><span>Public key (anon / publishable)</span><input type="text" name="sbKey" value="${esc(meta.comments.key)}" placeholder="sb_publishable_… or eyJ…" autocapitalize="off" spellcheck="false"></label>
+      <div class="row"><button type="button" class="btn sm" id="sql-copy">⧉ Copy setup SQL</button></div>
+
       <h3 style="margin:18px 0 6px">Data</h3>
       <div class="row">
         <label class="btn sm" style="cursor:pointer">⬆ Import .json<input type="file" id="imp" accept="application/json,.json" hidden></label>
@@ -1089,10 +1220,15 @@ function openSettings(note = '') {
         e.preventDefault(); readGh();
         const fd = new FormData(form);
         const t = fd.get('title').trim() || 'Research Progress'; const sub = fd.get('subtitle').trim();
-        const changed = t !== meta.title || sub !== meta.subtitle;
-        meta.title = t; meta.subtitle = sub;
+        const sb = { url: fd.get('sbUrl').trim(), key: fd.get('sbKey').trim() };
+        const changed = t !== meta.title || sub !== meta.subtitle || sb.url !== meta.comments.url || sb.key !== meta.comments.key;
+        meta.title = t; meta.subtitle = sub; meta.comments = sb;
         closeModal();
         if (changed) commit('Settings saved'); else { render(); toast('Settings saved'); }
+      });
+      $('#sql-copy', m).addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(COMMENTS_SQL); toast('Setup SQL copied ✓'); }
+        catch { openModal({ title: 'Setup SQL', body: `<textarea readonly rows="14" style="font-family:monospace;font-size:13px">${esc(COMMENTS_SQL)}</textarea>` }); }
       });
       $('#gh-load', m).addEventListener('click', async () => {
         readGh();
