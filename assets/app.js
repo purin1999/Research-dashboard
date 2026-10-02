@@ -35,7 +35,7 @@ const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 const parseYmd = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const startOfWeek = (d) => addDays(startOfDay(d), -((d.getDay() + 6) % 7)); // Monday
+const startOfWeek = (d) => addDays(startOfDay(d), -d.getDay()); // weeks run Sunday → Saturday
 const toMin = (t) => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const fromMin = (m) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
 const fmt = (d, o) => d.toLocaleDateString(LOCALE, o);
@@ -704,7 +704,7 @@ function monthView(cur, items) {
   }
   const dayItems = itemsOnDay(items, parseYmd(state.cal.day));
   return `<div class="month">
-      <div class="month-head">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => `<div>${d}</div>`).join('')}</div>
+      <div class="month-head">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => `<div>${d}</div>`).join('')}</div>
       <div class="month-grid">${cells.join('')}</div>
     </div>
     <div class="day-panel">
