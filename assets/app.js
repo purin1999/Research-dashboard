@@ -420,7 +420,6 @@ function viewDashboard() {
   const overdue = allItems().filter((x) => x.st === 'overdue').sort((a, b) => a.r.start - b.r.start);
   const in7 = addDays(now, 7);
   const soon = allItems((p) => isLeave(p) || isEvent(p) || p.status === 'ongoing').filter((x) => x.r && x.r.end >= now && !x.s.outcome && x.r.start <= in7).sort((a, b) => a.r.start - b.r.start);
-  const totals = ongoing.reduce((t, p) => { const c = progressOf(p); t.done += c.done; t.counted += c.counted; return t; }, { done: 0, counted: 0 });
 
   return `
     <div class="page-head">
@@ -428,9 +427,8 @@ function viewDashboard() {
     </div>
     <div class="stats">
       <div class="card stat"><div class="k">Ongoing projects</div><div class="v">${ongoing.length}</div></div>
-      <div class="card stat"><div class="k">Stages done</div><div class="v">${totals.done}<small>/${totals.counted}</small></div></div>
-      <div class="card stat"><div class="k">Next 7 days</div><div class="v">${soon.filter((x) => x.st !== 'off').length}</div></div>
-      <div class="card stat ${overdue.length ? 'warn' : ''}"><div class="k">Awaiting update</div><div class="v">${overdue.length}</div></div>
+      <div class="card stat"><div class="k">Upcoming tasks</div><div class="v">${soon.filter((x) => x.st !== 'off').length}</div></div>
+      <div class="card stat ${overdue.length ? 'warn' : ''}"><div class="k">Updates</div><div class="v">${overdue.length}</div></div>
     </div>
 
     ${overdue.length ? `<div class="section-title">${state.edit ? 'Needs your update' : 'Awaiting update'} <span class="count">${overdue.length}</span></div>

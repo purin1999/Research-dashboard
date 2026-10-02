@@ -158,7 +158,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .section-title { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .section-title .count { background: var(--surface-2); border-radius: 999px; padding: 1px 8px; letter-spacing: 0; }
 
-.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .stat { padding: 8px 10px; border-radius: 12px; }
 .stat .k { font-size: .7rem; color: var(--muted); font-weight: 600; line-height: 1.2; }
 .stat .v { font-size: 1.1rem; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
