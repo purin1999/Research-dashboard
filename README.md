@@ -28,7 +28,9 @@ hosted free on GitHub Pages and designed for iPhone, and visitors can look but n
 - **Special events** (📌): for regular meetings, slide preparation and other activities. Choose *Type → Special
   event* for a project. Its entries keep their status colours and update prompts and always appear in the calendar
   and the new-stage list, but the event is not counted as an ongoing project (no progress bar, not in the stats).
-- **Completed tab**: projects set to *Completed* move off the dashboard into their own tab.
+- **Archive tab**: projects set to *Paused* or *Completed* move off the dashboard into the Archive tab.
+- **Pinned event + visitor comments**: a special event can be shown at the top of the dashboard (last 2 entries and
+  the next one) and can allow visitors to comment on each entry ("Comments from members", name optional).
 - **🔗 Share**: copies or shares the view-only link (without `?admin`).
 - **Export** (⇪ tab): a printable report you can save as PDF, a spreadsheet (`.csv`), a calendar file (`.ics` for
   Google or Apple Calendar) and a full data backup (`.json`). You can export one project or everything.
@@ -90,3 +92,36 @@ python3 -m http.server 8000
 ```
 
 Opening `index.html` directly from disk won't work, because the browser blocks loading `data.json` from a `file://` page.
+
+## Visitor comments (one-time setup, about 5 minutes)
+
+Meeting comments are stored in a free [Supabase](https://supabase.com) database, because GitHub Pages can't store
+anything visitors write.
+
+1. Sign up at <https://supabase.com/dashboard> and create a **New project** (any name, free plan, region near you).
+2. Open **SQL Editor**, paste the setup SQL and press **Run**. You can copy it in the app from
+   ⚙︎ Settings → Visitor comments → *Copy setup SQL*, or from here:
+
+   ```sql
+   create table public.comments (
+     id bigint generated always as identity primary key,
+     stage_id text not null check (char_length(stage_id) <= 64),
+     name text check (char_length(name) <= 60),
+     body text not null check (char_length(body) between 1 and 2000),
+     created_at timestamptz not null default now()
+   );
+   alter table public.comments enable row level security;
+   grant select, insert on public.comments to anon;
+   create policy "Anyone can read comments" on public.comments
+     for select to anon using (true);
+   create policy "Anyone can add comments" on public.comments
+     for insert to anon with check (true);
+   ```
+3. Open **Project Settings → API** (or *Connect*). Copy the **Project URL** and the **publishable** (or `anon`
+   public) key.
+4. In the dashboard: **✎ Edit → ⚙︎ → Visitor comments**. Paste both values, tap **Save**, then **⬆ Publish**.
+5. On a special event (e.g. *Meeting*), **✎ Edit**, then tick **Allow visitor comments**.
+
+Visitors can only read and add comments, never edit or delete them. To moderate, tap **Hide** on a comment in edit
+mode and Publish, or delete rows in Supabase → **Table Editor → comments**. Never paste the `service_role` /
+secret key into the dashboard.
