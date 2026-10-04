@@ -1,6 +1,10 @@
 // Research Progress Dashboard — a dependency-free static app.
-// Viewers read data.json (read-only). The owner edits on their own device and
-// publishes by committing data.json to GitHub through the REST API.
+// students.json lists every student; each student's progress lives in its own
+// JSON file (in this repository or in the student's own repository). Viewers
+// read those files (read-only). A student signs in with a GitHub token, edits
+// their own dashboard on their device and publishes by committing their file
+// through the GitHub REST API. Only the student whose GitHub username matches
+// an entry may edit it; admins listed in students.json manage the roster.
 
 const LOCALE = 'en-GB';
 const HOUR_H = 48; // px per hour in week view
@@ -23,7 +27,8 @@ const LEAVE_KINDS = {
   other:    { label: 'Day off',           icon: '🏖' },
 };
 const LEAVE_COLOR = '#ffffff';
-const KEY = { gh: 'rpd.gh', draft: 'rpd.draft', owner: 'rpd.owner', edit: 'rpd.edit', cal: 'rpd.cal' };
+const KEY = { auth: 'rpd.auth', hub: 'rpd.hub', draft: 'rpd.draft', edit: 'rpd.edit', cal: 'rpd.cal', legacyGh: 'rpd.gh', legacyOwner: 'rpd.owner' };
+const REGISTRY = 'students.json';
 
 // ---------------------------------------------------------------- utilities
 const $ = (s, el = document) => el.querySelector(s);
@@ -50,15 +55,72 @@ const store = {
 
 // ---------------------------------------------------------------- state
 const state = {
-  data: null,
-  sha: null,        // blob sha of data.json on GitHub (for safe updates)
-  dirty: false,     // unpublished local changes
-  owner: false,     // this device may edit
-  edit: false,      // edit controls visible
-  gh: { owner: '', repo: '', branch: 'main', path: 'data.json', token: '' },
+  registry: null,   // students.json: { meta, students: [{ id, name, github, repo?, branch?, path? }] }
+  students: new Map(), // id → record { entry, data, sha, dirty, error, loading }
+  rec: null,        // the student whose pages are open
+  auth: { token: '', login: '' }, // GitHub identity signed in on this device
+  hub: { owner: '', repo: '', branch: 'main' }, // the repository that hosts this site and students.json
+  editPref: false,  // the signed-in student wants edit controls
+  edit: false,      // edit controls visible (editPref and allowed to edit the open student)
   cal: { view: 'month', cursor: ymd(new Date()), project: 'all', day: ymd(new Date()), past: false },
   statuses: new Map(),
 };
+// The open student's data, blob sha (for safe updates) and unpublished-changes flag.
+for (const k of ['data', 'sha', 'dirty']) {
+  Object.defineProperty(state, k, { get: () => state.rec?.[k] ?? (k === 'dirty' ? false : null), set: (v) => { if (state.rec) state.rec[k] = v; } });
+}
+
+// ---------------------------------------------------------------- students & permissions
+const sameUser = (a, b) => !!a && !!b && String(a).toLowerCase() === String(b).toLowerCase();
+const canEdit = (rec = state.rec) => !!(rec && state.auth.token && sameUser(rec.entry.github, state.auth.login));
+const isAdmin = () => !!state.auth.token && (state.registry?.meta.admins || []).some((a) => sameUser(a, state.auth.login));
+const myRecord = () => [...state.students.values()].find((r) => canEdit(r)) || null;
+
+function normalizeRegistry(r) {
+  const reg = r && typeof r === 'object' ? r : {};
+  reg.meta = { title: 'Research Progress', subtitle: '', admins: [], ...(reg.meta || {}) };
+  reg.meta.admins = Array.isArray(reg.meta.admins) ? reg.meta.admins.map(String) : [];
+  reg.meta.comments = { url: '', key: '', ...(reg.meta.comments || {}) };
+  const seen = new Set();
+  reg.students = (Array.isArray(reg.students) ? reg.students : []).filter((st) => st && typeof st === 'object').map((st) => {
+    const e = { ...st, name: String(st.name || st.id || 'Student'), github: String(st.github || '') };
+    e.id = slug(st.id || e.name);
+    while (seen.has(e.id)) e.id = `${e.id}-2`;
+    seen.add(e.id);
+    return e;
+  });
+  return reg;
+}
+
+function setRegistry(reg) {
+  state.registry = normalizeRegistry(reg);
+  const old = state.students;
+  state.students = new Map(state.registry.students.map((entry) => {
+    const prev = old.get(entry.id);
+    if (prev) { prev.entry = entry; return [entry.id, prev]; }
+    return [entry.id, { entry, data: null, sha: null, dirty: false, error: '', loading: null, gen: 0 }];
+  }));
+  if (state.rec && !state.students.has(state.rec.entry.id)) state.rec = null;
+}
+
+// Where a student's data file lives. By default it sits next to the site
+// (students/<id>.json in the hub repository); `repo` points it at the
+// student's own repository instead, where GitHub itself enforces who may write.
+function target(rec) {
+  const e = rec.entry;
+  if (e.repo) {
+    const [owner, repo] = e.repo.split('/');
+    return { owner, repo, branch: e.branch || 'main', path: e.path || 'data.json', external: true };
+  }
+  return { owner: state.hub.owner, repo: state.hub.repo, branch: state.hub.branch || 'main', path: e.path || `students/${e.id}.json`, external: false };
+}
+function publicUrl(rec) {
+  const t = target(rec);
+  const path = t.path.split('/').map(encodeURIComponent).join('/');
+  return t.external ? `https://raw.githubusercontent.com/${encodeURIComponent(t.owner)}/${encodeURIComponent(t.repo)}/${encodeURIComponent(t.branch)}/${path}` : path;
+}
+const href = (p = '', rec = state.rec) => `#/s/${encodeURIComponent(rec?.entry.id || '')}${p ? `/${p}` : ''}`;
+const projHref = (id) => href(`project/${encodeURIComponent(id)}`);
 
 // ---------------------------------------------------------------- data model
 function normalize(d) {
@@ -111,9 +173,9 @@ function stageRange(s) {
   return { start, end };
 }
 
-function computeStatuses(now = new Date()) {
+function computeStatuses(now = new Date(), data = state.data) {
   const map = new Map();
-  for (const p of state.data.projects) {
+  for (const p of data.projects) {
     if (isLeave(p)) { for (const s of p.stages) map.set(s.id, 'off'); continue; }
     let next = null; let nextStart = Infinity;
     for (const s of p.stages) {
@@ -130,7 +192,6 @@ function computeStatuses(now = new Date()) {
     }
     if (next) map.set(next.id, stageRange(next).start <= now ? 'inprogress' : 'upcoming');
   }
-  state.statuses = map;
   return map;
 }
 const statusOf = (s) => state.statuses.get(s.id) || 'planned';
@@ -193,7 +254,8 @@ function fmtWhen(s) {
 }
 
 // ---------------------------------------------------------------- persistence
-function saveDraft() { store.set(KEY.draft, { data: state.data, sha: state.sha, dirty: state.dirty }); }
+const draftKey = (rec) => `${KEY.draft}.${rec.entry.id}`;
+function saveDraft(rec = state.rec) { if (rec) store.set(draftKey(rec), { data: rec.data, sha: rec.sha, dirty: rec.dirty }); }
 
 function commit(msg) {
   state.dirty = true;
@@ -202,11 +264,42 @@ function commit(msg) {
   if (msg) toast(msg);
 }
 
-async function fetchPublished() {
-  const res = await fetch(`data.json?t=${Date.now()}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`data.json: HTTP ${res.status}`);
+async function fetchJSON(url) {
+  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) { const e = new Error(`${url.split('?')[0].split('/').pop()}: HTTP ${res.status}`); e.status = res.status; throw e; }
   return res.json();
 }
+const emptyData = (rec) => normalize({ meta: { title: rec.entry.name, subtitle: '' }, projects: [] });
+
+async function fetchPublished(rec = state.rec) {
+  try { return normalize(await fetchJSON(publicUrl(rec))); }
+  catch (e) { if (e.status === 404) return emptyData(rec); throw e; } // a new student who has not published yet
+}
+
+// Loads a student's data once: their unpublished draft on their own device,
+// otherwise the published file (refreshed from the GitHub API when it is theirs).
+function ensureLoaded(rec) {
+  if (rec.data || rec.loading) return rec.loading || Promise.resolve();
+  rec.error = '';
+  const gen = rec.gen;
+  rec.loading = (async () => {
+    const draft = canEdit(rec) ? store.get(draftKey(rec)) : null;
+    let data = null; let sha = null; let dirty = false; let error = '';
+    try {
+      if (draft?.dirty && draft.data) { data = normalize(draft.data); sha = draft.sha || null; dirty = true; }
+      else data = await fetchPublished(rec);
+    } catch (e) {
+      if (draft?.data) { data = normalize(draft.data); sha = draft.sha || null; }
+      else error = e.message;
+    }
+    if (rec.gen !== gen) return; // reset meanwhile (e.g. signed in): a newer load owns the record
+    Object.assign(rec, { data, sha, dirty, error, loading: null });
+    if (data && !dirty && canEdit(rec)) loadFromGitHub(rec, { quiet: true });
+  })();
+  return rec.loading;
+}
+// Forget a loaded record so the next render loads it again.
+function resetRecord(rec) { rec.gen++; Object.assign(rec, { data: null, sha: null, dirty: false, error: '', loading: null }); }
 
 // ---- GitHub contents API
 const b64enc = (str) => {
@@ -217,13 +310,7 @@ const b64enc = (str) => {
 };
 const b64dec = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0)));
 
-function ghUrl() {
-  const { owner, repo, path } = state.gh;
-  return `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
-}
-async function ghRequest(method, body) {
-  const { token, branch } = state.gh;
-  const url = method === 'GET' ? `${ghUrl()}?ref=${encodeURIComponent(branch)}&t=${Date.now()}` : ghUrl();
+async function ghApi(url, { method = 'GET', body, token = state.auth.token } = {}) {
   const res = await fetch(url, {
     method,
     headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28', ...(body ? { 'Content-Type': 'application/json' } : {}) },
@@ -234,52 +321,78 @@ async function ghRequest(method, body) {
   if (!res.ok) { const e = new Error(json.message || `GitHub HTTP ${res.status}`); e.status = res.status; throw e; }
   return json;
 }
-async function ghGet() {
-  const j = await ghRequest('GET');
+function ghUrl({ owner, repo, path }) {
+  return `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
+}
+async function ghGet(t) {
+  const j = await ghApi(`${ghUrl(t)}?ref=${encodeURIComponent(t.branch)}&t=${Date.now()}`);
   return { data: JSON.parse(b64dec(j.content)), sha: j.sha };
 }
-async function ghPut(text, sha, message) {
-  const j = await ghRequest('PUT', { message, content: b64enc(text), branch: state.gh.branch, ...(sha ? { sha } : {}) });
+async function ghPut(t, text, sha, message) {
+  const j = await ghApi(ghUrl(t), { method: 'PUT', body: { message, content: b64enc(text), branch: t.branch, ...(sha ? { sha } : {}) } });
   return j.content.sha;
 }
-const ghReady = () => !!(state.gh.token && state.gh.owner && state.gh.repo);
+const ghReady = (rec = state.rec) => { const t = rec && target(rec); return !!(state.auth.token && t?.owner && t?.repo); };
+const hubReady = () => !!(state.auth.token && state.hub.owner && state.hub.repo);
+const hubTarget = () => ({ ...state.hub, branch: state.hub.branch || 'main', path: REGISTRY });
 
-async function loadFromGitHub({ quiet = false } = {}) {
+async function loadFromGitHub(rec = state.rec, { quiet = false } = {}) {
+  if (!ghReady(rec)) return false;
   try {
-    const { data, sha } = await ghGet();
-    state.data = normalize(data); state.sha = sha; state.dirty = false;
-    saveDraft(); render();
+    const { data, sha } = await ghGet(target(rec));
+    rec.data = normalize(data); rec.sha = sha; rec.dirty = false;
+    saveDraft(rec); render();
     if (!quiet) toast('Loaded latest version from GitHub');
     return true;
   } catch (e) {
+    if (e.status === 404) { rec.sha = null; return false; } // nothing published yet
     if (!quiet) toast(`Could not load from GitHub: ${e.message}`, 5000);
     return false;
   }
 }
 
 async function publish() {
-  if (!ghReady()) { openSettings('Connect GitHub once to publish changes online.'); return; }
+  const rec = state.rec;
+  if (!canEdit(rec)) { openSignIn('Sign in as this student to publish changes.'); return; }
+  if (!ghReady(rec)) { openSignIn('The repository for this dashboard is not set. Fill it in under “Site repository”.'); return; }
   const btn = $('[data-act="publish"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Publishing…'; }
-  state.data.meta.updated = new Date().toISOString();
-  const text = `${JSON.stringify(state.data, null, 2)}\n`;
-  const message = `Update research progress (${new Date().toLocaleString(LOCALE)})`;
+  const t = target(rec);
+  rec.data.meta.updated = new Date().toISOString();
+  const text = `${JSON.stringify(rec.data, null, 2)}\n`;
+  const message = `Update research progress: ${rec.entry.name} (${new Date().toLocaleString(LOCALE)})`;
   try {
-    if (!state.sha) { try { state.sha = (await ghGet()).sha; } catch (e) { if (e.status !== 404) throw e; } }
+    if (!rec.sha) { try { rec.sha = (await ghGet(t)).sha; } catch (e) { if (e.status !== 404) throw e; } }
     try {
-      state.sha = await ghPut(text, state.sha, message);
+      rec.sha = await ghPut(t, text, rec.sha, message);
     } catch (e) {
       if (e.status !== 409 && e.status !== 422) throw e;
       if (!confirm('The online version changed since you loaded it (perhaps edited on another device).\n\nOK = overwrite it with this version\nCancel = keep your changes as a local draft')) throw new Error('Publish cancelled');
-      state.sha = (await ghGet()).sha;
-      state.sha = await ghPut(text, state.sha, message);
+      rec.sha = (await ghGet(t)).sha;
+      rec.sha = await ghPut(t, text, rec.sha, message);
     }
-    state.dirty = false; saveDraft(); render();
+    rec.dirty = false; saveDraft(rec); render();
     toast('Published ✓  Visitors will see it within a minute or two.', 4000);
   } catch (e) {
     render();
-    toast(e.message === 'Publish cancelled' ? e.message : `Publish failed: ${e.message}`, 6000);
+    const why = e.status === 403 || e.status === 404 ? `your token cannot write to ${t.owner}/${t.repo}. Ask the admin for access, or check the token's repository and “Contents: Read and write” permission.` : e.message;
+    toast(e.message === 'Publish cancelled' ? e.message : `Publish failed: ${why}`, 7000);
   }
+}
+
+// The roster (students.json) is changed straight on GitHub by an admin:
+// read the latest version, apply the change, and commit it.
+async function saveRegistry(change, message) {
+  if (!isAdmin()) throw new Error('Only admins can change the student list');
+  if (!hubReady()) throw new Error('Set the site repository in Sign in → Site repository first');
+  const t = hubTarget();
+  let reg; let sha = null;
+  try { const got = await ghGet(t); reg = got.data; sha = got.sha; }
+  catch (e) { if (e.status !== 404) throw e; reg = JSON.parse(JSON.stringify(state.registry)); }
+  reg = normalizeRegistry(reg);
+  change(reg);
+  await ghPut(t, `${JSON.stringify(reg, null, 2)}\n`, sha, message);
+  setRegistry(reg);
 }
 
 // ---------------------------------------------------------------- exports
@@ -366,14 +479,23 @@ function openExport() {
 }
 
 // ---------------------------------------------------------------- routing
+// #/                      all students (overview)
+// #/s/<student>           a student's dashboard
+// #/s/<student>/calendar | completed | project/<id> | report/<scope>
+// Links from the single-user version (#/project/<id>, #/calendar, …) open the first student.
 function parseRoute() {
-  const h = location.hash.replace(/^#\/?/, '');
-  const [name, id] = h.split('/');
-  if (name === 'project' && id) return { name: 'project', id: decodeURIComponent(id) };
-  if (name === 'calendar') return { name: 'calendar' };
-  if (name === 'completed') return { name: 'completed' };
-  if (name === 'report') return { name: 'report', id: id ? decodeURIComponent(id) : 'all' };
-  return { name: 'dashboard' };
+  const parts = location.hash.replace(/^#\/?/, '').split('/');
+  const dec = (v) => { try { return decodeURIComponent(v || ''); } catch { return v || ''; } };
+  if (parts[0] === 's' && parts[1]) {
+    const sid = dec(parts[1]); const [name, id] = parts.slice(2);
+    if (name === 'project' && id) return { name: 'project', id: dec(id), sid };
+    if (name === 'calendar') return { name: 'calendar', sid };
+    if (name === 'completed') return { name: 'completed', sid };
+    if (name === 'report') return { name: 'report', id: id ? dec(id) : 'all', sid };
+    return { name: 'dashboard', sid };
+  }
+  if (['project', 'calendar', 'completed', 'report'].includes(parts[0])) return { name: 'legacy', rest: parts.join('/') };
+  return { name: 'home' };
 }
 
 // ---------------------------------------------------------------- rendering helpers
@@ -422,6 +544,7 @@ function viewDashboard() {
   const soon = allItems((p) => isLeave(p) || isEvent(p) || p.status === 'ongoing').filter((x) => x.r && x.r.end >= now && !x.s.outcome && x.r.start <= in7).sort((a, b) => a.r.start - b.r.start);
 
   return `
+    <div class="crumbs"><a href="#/">← All students</a></div>
     <div class="page-head">
       <div><h1>${esc(meta.title)}</h1>${meta.subtitle ? `<div class="sub">${esc(meta.subtitle)}</div>` : ''}</div>
     </div>
@@ -449,7 +572,7 @@ function viewDashboard() {
       ${leave.length ? `<div class="projects">${leave.map(leaveCard).join('')}</div>` : ''}
       ${state.edit ? '<div class="row" style="margin-top:12px"><button class="btn" data-act="new-leave">＋ Day off</button></div>' : ''}` : ''}
 
-    ${inactive.length ? `<a class="card archive-link" href="#/completed"><span class="ico">🗂</span><span><b>Paused &amp; completed projects</b><br><span class="muted small">${inactive.length} project${inactive.length > 1 ? 's' : ''} · in the Archive tab</span></span><span class="spacer"></span><span aria-hidden="true">›</span></a>` : ''}
+    ${inactive.length ? `<a class="card archive-link" href="${href('completed')}"><span class="ico">🗂</span><span><b>Paused &amp; completed projects</b><br><span class="muted small">${inactive.length} project${inactive.length > 1 ? 's' : ''} · in the Archive tab</span></span><span class="spacer"></span><span aria-hidden="true">›</span></a>` : ''}
     <div style="margin-top:18px">${legend()}</div>`;
 }
 
@@ -461,7 +584,7 @@ function topEventSection(p) {
   const past = items.filter((x) => x.r.end < now).slice(-2);
   const next = items.filter((x) => x.r.end >= now).slice(0, 1);
   const rows = [...past, ...next];
-  return `<div class="section-title">📌 ${esc(p.title)}<span class="spacer"></span><a class="small" href="#/project/${encodeURIComponent(p.id)}" style="text-transform:none;letter-spacing:0">All ›</a></div>
+  return `<div class="section-title">📌 ${esc(p.title)}<span class="spacer"></span><a class="small" href="${projHref(p.id)}" style="text-transform:none;letter-spacing:0">All ›</a></div>
     ${rows.length ? `<div class="mini-list">${rows.map((x) => miniRow(x)).join('')}</div>` : `<div class="card empty" style="padding:16px">Nothing scheduled yet.</div>`}
     ${p.comments ? '<p class="muted small" style="margin:6px 2px 0">💬 Tap a meeting to read or add comments.</p>' : ''}
     ${state.edit ? `<div class="row" style="margin-top:10px"><button class="btn sm" data-act="new-stage" data-pid="${p.id}">＋ Add ${esc(p.title.toLowerCase())}</button></div>` : ''}`;
@@ -483,7 +606,7 @@ function viewCompleted() {
 function projectCard(p) {
   const c = progressOf(p);
   const nextS = p.stages.find((s) => ['upcoming', 'inprogress'].includes(statusOf(s)));
-  return `<a class="card project-card" href="#/project/${encodeURIComponent(p.id)}" style="--pc:${esc(p.color)}">
+  return `<a class="card project-card" href="${projHref(p.id)}" style="--pc:${esc(p.color)}">
     <div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><h3>${esc(p.title)}</h3>${p.status !== 'ongoing' ? `<span class="pill">${esc(p.status)}</span>` : ''}</div>
     ${p.description ? `<div class="desc">${esc(p.description)}</div>` : ''}
     <div class="pc-foot">
@@ -496,7 +619,7 @@ function projectCard(p) {
 function eventCard(p) {
   const now = new Date();
   const next = p.stages.map((s) => ({ s, st: statusOf(s), r: stageRange(s) })).filter((x) => x.r && x.r.end >= now && !x.s.outcome).sort((a, b) => a.r.start - b.r.start);
-  return `<a class="card project-card" href="#/project/${encodeURIComponent(p.id)}" style="--pc:${esc(p.color)}">
+  return `<a class="card project-card" href="${projHref(p.id)}" style="--pc:${esc(p.color)}">
     <h3>📌 ${esc(p.title)}</h3>
     ${p.description ? `<div class="desc">${esc(p.description)}</div>` : ''}
     <div class="pc-foot">
@@ -509,7 +632,7 @@ function eventCard(p) {
 function leaveCard(p) {
   const today0 = startOfDay(new Date());
   const next = p.stages.map((s) => ({ s, r: stageRange(s) })).filter((x) => x.r && x.r.end >= today0).sort((a, b) => a.r.start - b.r.start);
-  return `<a class="card project-card leave-card" href="#/project/${encodeURIComponent(p.id)}" style="--pc:${LEAVE_COLOR}">
+  return `<a class="card project-card leave-card" href="${projHref(p.id)}" style="--pc:${LEAVE_COLOR}">
     <h3>🏖 ${esc(p.title)}</h3>
     ${p.description ? `<div class="desc">${esc(p.description)}</div>` : ''}
     <div class="pc-foot">
@@ -554,12 +677,12 @@ function stageCard(p, s, i, sorted = false) {
 
 function viewProject(id) {
   const p = findProject(id);
-  if (!p) return '<div class="card empty">Project not found. <a href="#/">Back to dashboard</a></div>';
+  if (!p) return `<div class="card empty">Project not found. <a href="${href()}">Back to dashboard</a></div>`;
   if (isLeave(p)) return viewLeave(p);
   if (isEvent(p)) return viewEvent(p);
   const c = progressOf(p);
   return `
-    <div class="crumbs"><a href="#/">← Dashboard</a></div>
+    <div class="crumbs"><a href="${href()}">← Dashboard</a></div>
     <div class="card proj-head" style="--pc:${esc(p.color)}">
       <div class="row" style="align-items:flex-start"><h1>${esc(p.title)}</h1><span class="pill">${esc(p.status)}</span></div>
       ${p.description ? `<p class="muted" style="margin:6px 0 0;white-space:pre-wrap">${esc(p.description)}</p>` : ''}
@@ -567,7 +690,7 @@ function viewProject(id) {
       <div class="row no-print" style="margin-top:14px">
         ${state.edit ? `<button class="btn primary" data-act="new-stage" data-pid="${p.id}">＋ Add stage</button>
           <button class="btn" data-act="edit-project" data-id="${p.id}">✎ Edit project</button>` : ''}
-        <a class="btn" href="#/calendar" data-act="cal-project" data-id="${p.id}">📅 Calendar</a>
+        <a class="btn" href="${href('calendar')}" data-act="cal-project" data-id="${p.id}">📅 Calendar</a>
         <button class="btn" data-act="export">⇪ Export</button>
       </div>
     </div>
@@ -586,14 +709,14 @@ function viewEvent(p) {
   const past = byDate.filter(isPast).reverse();
   const list = (xs) => `<ol class="timeline">${xs.map((s) => stageCard(p, s, 0, true)).join('')}</ol>`;
   return `
-    <div class="crumbs"><a href="#/">← Dashboard</a></div>
+    <div class="crumbs"><a href="${href()}">← Dashboard</a></div>
     <div class="card proj-head" style="--pc:${esc(p.color)}">
       <div class="row" style="align-items:flex-start"><h1>📌 ${esc(p.title)}</h1><span class="pill">Special event</span></div>
       ${p.description ? `<p class="muted" style="margin:6px 0 0;white-space:pre-wrap">${esc(p.description)}</p>` : ''}
       <div class="row no-print" style="margin-top:14px">
         ${state.edit ? `<button class="btn primary" data-act="new-stage" data-pid="${p.id}">＋ Add entry</button>
           <button class="btn" data-act="edit-project" data-id="${p.id}">✎ Edit</button>` : ''}
-        <a class="btn" href="#/calendar" data-act="cal-project" data-id="${p.id}">📅 Calendar</a>
+        <a class="btn" href="${href('calendar')}" data-act="cal-project" data-id="${p.id}">📅 Calendar</a>
         <button class="btn" data-act="export">⇪ Export</button>
       </div>
     </div>
@@ -611,14 +734,14 @@ function viewLeave(p) {
   const past = days.filter((s) => s.date && (s.endDate || s.date) < today);
   const list = (xs) => `<ol class="timeline">${xs.map((s) => stageCard(p, s, 0)).join('')}</ol>`;
   return `
-    <div class="crumbs"><a href="#/">← Dashboard</a></div>
+    <div class="crumbs"><a href="${href()}">← Dashboard</a></div>
     <div class="card proj-head" style="--pc:#cbd5e1">
       <div class="row" style="align-items:flex-start"><h1>🏖 ${esc(p.title)}</h1><span class="pill">Holiday &amp; leave</span></div>
       <p class="muted" style="margin:6px 0 0;white-space:pre-wrap">${esc(p.description || 'Public holidays, personal appointments and days the university is closed. These never ask for a status update.')}</p>
       <div class="row no-print" style="margin-top:14px">
         ${state.edit ? `<button class="btn primary" data-act="new-stage" data-pid="${p.id}">＋ Add day off</button>
           <button class="btn" data-act="edit-project" data-id="${p.id}">✎ Edit</button>` : ''}
-        <a class="btn" href="#/calendar" data-act="cal-project" data-id="${p.id}">📅 Calendar</a>
+        <a class="btn" href="${href('calendar')}" data-act="cal-project" data-id="${p.id}">📅 Calendar</a>
       </div>
     </div>
     <div class="section-title">Upcoming <span class="count">${upcoming.length}</span></div>
@@ -781,7 +904,7 @@ function viewReport(scope) {
   const projects = scopeProjects(scope);
   const { meta } = state.data;
   return `<div class="report">
-    <div class="row no-print" style="margin-bottom:14px"><a class="btn" href="${scope !== 'all' && findProject(scope) ? `#/project/${encodeURIComponent(scope)}` : '#/'}">← Back</a><span class="spacer"></span><button class="btn primary" data-act="print">🖨️ Print / Save as PDF</button></div>
+    <div class="row no-print" style="margin-bottom:14px"><a class="btn" href="${scope !== 'all' && findProject(scope) ? projHref(scope) : href()}">← Back</a><span class="spacer"></span><button class="btn primary" data-act="print">🖨️ Print / Save as PDF</button></div>
     <h1>${esc(meta.title)}${scope !== 'all' && projects[0] ? ` — ${esc(projects[0].title)}` : ''}</h1>
     <p class="muted">${meta.subtitle ? `${esc(meta.subtitle)} · ` : ''}Report generated ${esc(new Date().toLocaleString(LOCALE))}${meta.updated ? ` · data last updated ${esc(new Date(meta.updated).toLocaleString(LOCALE))}` : ''}</p>
     ${projects.map((p) => {
@@ -798,19 +921,108 @@ function viewReport(scope) {
   </div>`;
 }
 
-// ---------------------------------------------------------------- main render
-function render() {
-  if (!state.data) return;
-  computeStatuses();
-  const route = parseRoute();
-  const { meta } = state.data;
-  document.title = route.name === 'project' ? `${findProject(route.id)?.title || 'Project'} · ${meta.title}` : meta.title;
-  $('#brand-title').textContent = meta.title;
-  $$('.tabs [data-tab]').forEach((a) => a.classList.toggle('active', a.dataset.tab === (['calendar', 'completed'].includes(route.name) ? route.name : route.name === 'project' && findProject(route.id) && isResearch(findProject(route.id)) && findProject(route.id)?.status !== 'ongoing' ? 'completed' : route.name === 'report' ? '' : 'dashboard')));
+// ---- all students (overview)
+// One student's headline numbers, computed from their own data.
+function summarize(rec, now = new Date()) {
+  const d = rec.data; const sts = computeStatuses(now, d);
+  const ongoing = d.projects.filter((p) => isResearch(p) && p.status === 'ongoing');
+  let done = 0; let counted = 0; let overdue = 0; let soon = 0; let next = null;
+  const in7 = addDays(now, 7);
+  for (const p of d.projects) {
+    for (const s of p.stages) {
+      const st = sts.get(s.id);
+      if (st === 'overdue') overdue++;
+      const r = stageRange(s);
+      if (st !== 'off' && r && !s.outcome && r.end >= now && r.start <= in7 && (!isResearch(p) || p.status === 'ongoing')) soon++;
+      if (ongoing.includes(p)) {
+        if (st === 'done') done++;
+        if (st !== 'failed') counted++;
+        if ((st === 'upcoming' || st === 'inprogress') && (!next || r.start < next.r.start)) next = { p, s, st, r };
+      }
+    }
+  }
+  return { ongoing: ongoing.length, done, counted, overdue, soon, next, pct: counted ? Math.round((done / counted) * 100) : 0 };
+}
 
-  // top actions
+const initials = (name) => String(name).trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
+const avatarColor = (id) => COLORS[[...String(id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % COLORS.length];
+function relTime(iso) {
+  if (!iso) return '';
+  const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  if (mins < 60 * 24) return `${Math.round(mins / 60)} h ago`;
+  const days = Math.round(mins / 1440);
+  return days < 30 ? `${days} day${days > 1 ? 's' : ''} ago` : fmt(new Date(iso), { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function studentCard(rec) {
+  const e = rec.entry; const mine = canEdit(rec);
+  const head = `<div class="sc-head"><span class="avatar" style="--av:${avatarColor(e.id)}" aria-hidden="true">${esc(initials(e.name))}</span>
+    <div class="sc-name"><h3>${esc(e.name)}</h3><div class="muted small">${esc(rec.data?.meta.subtitle || (e.github ? `@${e.github}` : ''))}</div></div>
+    ${mine ? '<span class="pill you">You</span>' : ''}</div>`;
+  let body;
+  if (rec.error) body = `<p class="muted small">Could not load (${esc(rec.error)}).</p>`;
+  else if (!rec.data) body = '<p class="muted small">Loading…</p>';
+  else {
+    const m = summarize(rec);
+    const c = { done: m.done, counted: m.counted, overdue: 0, pct: m.pct };
+    body = `<div class="pc-foot">
+      ${m.ongoing ? `${pbar(c)}<div class="pc-meta"><span><b>${m.done}/${m.counted}</b> stages done · ${m.ongoing} ongoing project${m.ongoing > 1 ? 's' : ''}</span><b>${m.pct}%</b></div>` : '<div class="muted small">No ongoing projects.</div>'}
+      <div class="sc-tags">
+        <span class="pill">${m.soon} task${m.soon === 1 ? '' : 's'} in the next 7 days</span>
+        ${m.overdue ? `<span class="pill warn">${m.overdue} awaiting update</span>` : ''}
+      </div>
+      ${m.next ? `<div class="next-chip tinted st-${m.next.st}"><span>${STATUS[m.next.st].icon}</span><div><div class="t">${esc(m.next.s.name)}</div><div>${esc(m.next.p.title)} · ${esc(fmtWhen(m.next.s))}</div></div></div>` : ''}
+      ${rec.data.meta.updated ? `<div class="muted small">Updated ${esc(relTime(rec.data.meta.updated))}</div>` : ''}
+    </div>`;
+  }
+  return `<a class="card project-card student-card" href="${href('', rec)}" data-name="${esc(`${e.name} ${e.github}`.toLowerCase())}" style="--pc:${avatarColor(e.id)}">${head}${body}</a>`;
+}
+
+function viewHome() {
+  const { meta } = state.registry;
+  const recs = [...state.students.values()];
+  const loaded = recs.filter((r) => r.data);
+  const sums = loaded.map((r) => summarize(r));
+  const total = (k) => sums.reduce((a, m) => a + m[k], 0);
+  const me = myRecord();
+  return `
+    <div class="page-head">
+      <div><h1>${esc(meta.title)}</h1>${meta.subtitle ? `<div class="sub">${esc(meta.subtitle)}</div>` : ''}</div>
+    </div>
+    <div class="stats">
+      <div class="card stat"><div class="k">Students</div><div class="v">${recs.length}</div></div>
+      <div class="card stat"><div class="k">Ongoing projects</div><div class="v">${total('ongoing')}</div></div>
+      <div class="card stat ${total('overdue') ? 'warn' : ''}"><div class="k">Awaiting update</div><div class="v">${total('overdue')}</div></div>
+    </div>
+    ${me ? `<a class="card archive-link my-link" href="${href('', me)}"><span class="avatar" style="--av:${avatarColor(me.entry.id)}" aria-hidden="true">${esc(initials(me.entry.name))}</span><span><b>Go to my dashboard</b><br><span class="muted small">Signed in as @${esc(state.auth.login)} · you can edit your own progress</span></span><span class="spacer"></span><span aria-hidden="true">›</span></a>` : ''}
+    <div class="section-title">All students <span class="count">${recs.length}</span><span class="spacer"></span>
+      ${isAdmin() ? '<button class="btn sm" data-act="roster" style="text-transform:none;letter-spacing:0">👥 Manage students</button>' : ''}</div>
+    ${recs.length > 4 ? '<input type="text" class="filter" data-input="student-filter" placeholder="Search students…" aria-label="Search students">' : ''}
+    ${recs.length ? `<div class="projects students">${recs.map(studentCard).join('')}</div>`
+      : `<div class="card empty">No students yet.${isAdmin() ? '<br><button class="btn primary" data-act="add-student">＋ Add a student</button>' : ' An admin adds students to <code>students.json</code>.'}</div>`}
+    <p class="muted small" style="margin-top:18px">Tap a student to see their projects, stages and calendar. Everyone can view; each student can only edit their own dashboard.</p>`;
+}
+
+// ---------------------------------------------------------------- main render
+const TABS = [
+  ['dashboard', '', '▦', 'Dashboard'],
+  ['calendar', 'calendar', '📅', 'Calendar'],
+  ['completed', 'completed', '🗂', 'Archive'],
+];
+function renderChrome(route) {
+  const home = route.name === 'home';
+  document.body.classList.toggle('no-tabs', home);
+  const p = route.name === 'project' && state.data ? findProject(route.id) : null;
+  const active = home ? 'home' : ['calendar', 'completed'].includes(route.name) ? route.name
+    : p && isResearch(p) && p.status !== 'ongoing' ? 'completed' : route.name === 'report' ? '' : 'dashboard';
+  $('.tabs').innerHTML = `<a href="#/" class="${active === 'home' ? 'active' : ''}"><span class="tab-ico" aria-hidden="true">👥</span><span>Students</span></a>
+    ${home ? '' : `${TABS.map(([k, path, ico, label]) => `<a href="${href(path)}" class="${active === k ? 'active' : ''}"><span class="tab-ico" aria-hidden="true">${ico}</span><span>${label}</span></a>`).join('')}
+    <button type="button" data-act="export"><span class="tab-ico" aria-hidden="true">⇪</span><span>Export</span></button>`}`;
+
   let actions = '<button class="btn sm" data-act="share" aria-label="Share visitor link">🔗<span class="lbl-long"> Share</span></button>';
-  if (state.owner) {
+  if (!home && canEdit()) {
     if (state.dirty) actions += '<button class="btn sm primary pulse" data-act="publish">⬆ Publish</button>';
     actions += state.edit
       ? '<button class="btn sm" data-act="settings" aria-label="Settings">⚙︎</button><button class="btn sm" data-act="toggle-edit">Done</button>'
@@ -818,16 +1030,71 @@ function render() {
   }
   $('#top-actions').innerHTML = actions;
 
+  const who = state.auth.token
+    ? `Signed in as <b>@${esc(state.auth.login || '…')}</b> · <a href="#" data-act="account">Account</a>`
+    : 'View only · <a href="#" data-act="signin">Student sign-in</a>';
+  const updated = !home && state.data?.meta.updated ? `Last updated ${esc(new Date(state.data.meta.updated).toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' }))}` : '';
+  const mode = !home && canEdit() ? (state.edit ? ' · Editing your dashboard' : ' · Your dashboard') : !home && state.auth.token ? ' · View only' : '';
+  $('#foot').innerHTML = `<span>${updated}</span><span>${who}${mode}</span>`;
+}
+
+function render() {
+  if (!state.registry) return;
+  const route = parseRoute();
+  if (route.name === 'legacy') {
+    const first = state.registry.students[0];
+    location.replace(first ? `#/s/${encodeURIComponent(first.id)}/${route.rest}` : '#/');
+    return;
+  }
+  const v = $('#view');
+  if (route.name === 'home') {
+    state.rec = null; state.edit = false;
+    for (const rec of state.students.values()) if (!rec.data && !rec.error && !rec.loading) ensureLoaded(rec).then(() => { if (parseRoute().name === 'home' && !modalOpen()) render(); });
+    document.title = state.registry.meta.title;
+    $('#brand-title').textContent = state.registry.meta.title;
+    renderChrome(route);
+    $('#banner').innerHTML = '';
+    const q = $('[data-input="student-filter"]')?.value || '';
+    v.innerHTML = viewHome();
+    if (q) { const f = $('[data-input="student-filter"]'); if (f) { f.value = q; filterStudents(q); } }
+    return;
+  }
+
+  const rec = state.students.get(route.sid);
+  if (!rec) {
+    state.rec = null; state.edit = false;
+    renderChrome({ name: 'home' }); $('#banner').innerHTML = '';
+    v.innerHTML = '<div class="card empty">Student not found. <a href="#/">See all students</a></div>';
+    return;
+  }
+  state.rec = rec;
+  state.edit = state.editPref && canEdit(rec);
+  if (!rec.data) {
+    $('#brand-title').textContent = rec.entry.name;
+    renderChrome(route); $('#banner').innerHTML = '';
+    v.innerHTML = rec.error
+      ? `<div class="card empty"><h2>Could not load ${esc(rec.entry.name)}’s data</h2><p>${esc(rec.error)}</p><p class="small">If you opened <code>index.html</code> directly from disk, serve the folder instead (e.g. <code>python3 -m http.server</code>) or open the GitHub Pages address.</p></div>`
+      : '<p class="muted loading">Loading…</p>';
+    if (!rec.error) ensureLoaded(rec).then(() => { if (state.rec === rec) render(); });
+    return;
+  }
+
+  state.statuses = computeStatuses();
+  if (!['all', 'everything'].includes(state.cal.project) && !findProject(state.cal.project)) state.cal.project = 'all';
+  const { meta } = state.data;
+  document.title = route.name === 'project' ? `${findProject(route.id)?.title || 'Project'} · ${meta.title}` : meta.title;
+  $('#brand-title').textContent = meta.title;
+  renderChrome(route);
+
   // banner
-  const overdue = [...state.statuses.values()].filter((v) => v === 'overdue').length;
+  const overdue = [...state.statuses.values()].filter((x) => x === 'overdue').length;
   let banner = '';
-  if (state.owner && state.dirty) banner = `<div class="banner"><div class="inner info">You have unpublished changes. Visitors still see the previous version.<span class="spacer"></span><button class="btn sm primary" data-act="publish">Publish now</button><button class="btn sm ghost" data-act="discard">Discard</button></div></div>`;
-  else if (state.edit && overdue && route.name !== 'dashboard') banner = `<div class="banner"><div class="inner st-overdue">⏰ ${overdue} stage${overdue > 1 ? 's' : ''} past the planned date need${overdue > 1 ? '' : 's'} an update.<span class="spacer"></span><a class="btn sm" href="#/">Review</a></div></div>`;
+  if (canEdit() && state.dirty) banner = `<div class="banner"><div class="inner info">You have unpublished changes. Visitors still see the previous version.<span class="spacer"></span><button class="btn sm primary" data-act="publish">Publish now</button><button class="btn sm ghost" data-act="discard">Discard</button></div></div>`;
+  else if (state.edit && overdue && route.name !== 'dashboard') banner = `<div class="banner"><div class="inner st-overdue">⏰ ${overdue} stage${overdue > 1 ? 's' : ''} past the planned date need${overdue > 1 ? '' : 's'} an update.<span class="spacer"></span><a class="btn sm" href="${href()}">Review</a></div></div>`;
   $('#banner').innerHTML = banner;
 
   // view
   const scroll = $('#wk-scroll')?.scrollTop;
-  const v = $('#view');
   v.innerHTML = route.name === 'project' ? viewProject(route.id)
     : route.name === 'calendar' ? viewCalendar()
     : route.name === 'report' ? viewReport(route.id)
@@ -835,9 +1102,11 @@ function render() {
     : viewDashboard();
   const wk = $('#wk-scroll');
   if (wk) wk.scrollTop = scroll ?? Math.max(0, (Math.min(new Date().getHours(), 16) - 1) * HOUR_H - 20) ;
+}
 
-  $('#foot').innerHTML = `<span>${meta.updated ? `Last updated ${esc(new Date(meta.updated).toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' }))}` : ''}</span>
-    <span>${state.owner ? (state.edit ? 'Editing on this device' : 'Owner device') : 'View only · <a href="#" data-act="owner-signin">Owner sign-in</a>'}</span>`;
+function filterStudents(q) {
+  const t = q.trim().toLowerCase();
+  $$('.student-card').forEach((c) => c.classList.toggle('hidden', !!t && !c.dataset.name.includes(t)));
 }
 
 // ---------------------------------------------------------------- modal / toast
@@ -879,7 +1148,7 @@ function openStage(id) {
   openModal({
     title: s.name,
     body: `<div class="stack">
-      <div class="row"><span class="mini" style="padding:0;background:none;border:0;cursor:auto"><span class="dot" style="background:${esc(projColor(p))}"></span></span><a href="#/project/${encodeURIComponent(p.id)}" data-close-nav>${esc(p.title)}</a><span class="spacer"></span>${badge(st, s)}</div>
+      <div class="row"><span class="mini" style="padding:0;background:none;border:0;cursor:auto"><span class="dot" style="background:${esc(projColor(p))}"></span></span><a href="${projHref(p.id)}" data-close-nav>${esc(p.title)}</a><span class="spacer"></span>${badge(st, s)}</div>
       <div class="when" style="font-size:.95rem">🗓 ${esc(fmtWhen(s))}</div>
       ${s.notes ? `<p class="notes">${esc(s.notes)}</p>` : ''}
       ${s.conditions.length ? `<div class="st-${st}"><ol class="conds">${s.conditions.map((c, k) => `<li><b>Condition ${k + 1}</b><span>${esc(c)}</span></li>`).join('')}</ol></div>` : isResearch(p) ? '<p class="muted small">No experiment conditions listed.</p>' : ''}
@@ -894,14 +1163,15 @@ function openStage(id) {
         ${s.outcome === 'failed' ? `<button class="btn" data-act="dup-stage" data-id="${s.id}">↻ Reschedule</button>` : ''}
         <button class="btn" data-act="edit-stage" data-id="${s.id}">✎ Edit</button>
         <button class="btn primary" data-act="outcome" data-id="${s.id}">Update result</button>`
-      : `<a class="btn" href="#/project/${encodeURIComponent(p.id)}" data-close-nav>Open project</a>`,
+      : `<a class="btn" href="${projHref(p.id)}" data-close-nav>Open project</a>`,
   });
 }
 
 // ---------------------------------------------------------------- visitor comments
 // Comments live in a Supabase table (free tier). The project URL and the public
-// "anon"/publishable key are stored in data.json; row-level security only allows
-// reading and adding comments. The owner hides unwanted ones via meta.hiddenComments.
+// "anon"/publishable key are stored in the student's data file (or, as a shared
+// default, in students.json); row-level security only allows reading and adding
+// comments. The student hides unwanted ones via meta.hiddenComments.
 const COMMENTS_SQL = `create table public.comments (
   id bigint generated always as identity primary key,
   stage_id text not null check (char_length(stage_id) <= 64),
@@ -917,7 +1187,8 @@ create policy "Anyone can add comments" on public.comments
   for insert to anon with check (true);`;
 
 function commentsCfg() {
-  const c = state.data.meta.comments || {};
+  const own = state.data.meta.comments || {};
+  const c = own.url && own.key ? own : state.registry?.meta.comments || {};
   return c.url && c.key ? { url: c.url.trim().replace(/\/+$/, ''), key: c.key.trim() } : null;
 }
 async function sbFetch(path, opts = {}) {
@@ -947,7 +1218,7 @@ function commentsBox() {
 function mountComments(m, s) {
   const list = $('#cm-list', m); const form = $('#cm-form', m);
   if (!commentsCfg()) {
-    list.innerHTML = `<p class="muted small">Comments aren't switched on yet.${state.owner ? ' Set them up in ⚙︎ Settings → Visitor comments.' : ''}</p>`;
+    list.innerHTML = `<p class="muted small">Comments aren't switched on yet.${canEdit() ? ' Set them up in ⚙︎ Settings → Visitor comments.' : ''}</p>`;
     return;
   }
   const hidden = () => new Set(state.data.meta.hiddenComments.map(String));
@@ -1165,7 +1436,7 @@ function openProjectForm(id) {
         if (type === 'leave' && p && !isLeave(p) && p.stages.length && !confirm('Turn this project into “Holiday & leave”? Its stages will lose their results and conditions.')) return;
         if (type === 'leave') for (const st of p?.stages || []) { st.outcome = null; st.conditions = []; st.comment = ''; st.kind ||= 'other'; }
         if (p) Object.assign(p, v);
-        else { const np = { id: uid('p'), ...v, stages: [] }; state.data.projects.push(np); location.hash = `#/project/${np.id}`; }
+        else { const np = { id: uid('p'), ...v, stages: [] }; state.data.projects.push(np); location.hash = projHref(np.id); }
         closeModal();
         commit(p ? 'Project saved' : 'Project created');
       });
@@ -1174,29 +1445,21 @@ function openProjectForm(id) {
 }
 
 function openSettings(note = '') {
-  const g = state.gh; const meta = state.data.meta;
+  const rec = state.rec; const meta = state.data.meta; const t = target(rec);
   openModal({
     title: 'Settings',
     body: `<form id="set-form" autocomplete="off">
       ${note ? `<div class="banner" style="padding:0;margin:0 0 14px"><div class="inner info">${esc(note)}</div></div>` : ''}
-      <h3 style="margin-bottom:10px">Dashboard</h3>
+      <h3 style="margin-bottom:10px">My dashboard</h3>
       <label class="field"><span>Title</span><input type="text" name="title" value="${esc(meta.title)}"></label>
-      <label class="field"><span>Subtitle</span><input type="text" name="subtitle" value="${esc(meta.subtitle)}" placeholder="e.g. your name · lab"></label>
+      <label class="field"><span>Subtitle</span><input type="text" name="subtitle" value="${esc(meta.subtitle)}" placeholder="e.g. PhD course until 2028 · lab"></label>
 
-      <h3 style="margin:18px 0 6px">Publishing to GitHub</h3>
-      <p class="help" style="margin:0 0 12px">Changes are saved into <code>data.json</code> in your repository, which GitHub Pages serves to visitors. The token is stored only in this browser.</p>
-      <div class="grid2">
-        <label class="field"><span>GitHub user / org</span><input type="text" name="owner" value="${esc(g.owner)}" autocapitalize="off" spellcheck="false"></label>
-        <label class="field"><span>Repository</span><input type="text" name="repo" value="${esc(g.repo)}" autocapitalize="off" spellcheck="false"></label>
-        <label class="field"><span>Branch</span><input type="text" name="branch" value="${esc(g.branch)}" autocapitalize="off" spellcheck="false"></label>
-        <label class="field"><span>Data file</span><input type="text" name="path" value="${esc(g.path)}" autocapitalize="off" spellcheck="false"></label>
-      </div>
-      <label class="field"><span>Access token</span><input type="password" name="token" value="${esc(g.token)}" placeholder="github_pat_…" autocapitalize="off" spellcheck="false"></label>
-      <p class="help">Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a> limited to this one repository with <b>Contents: Read and write</b>.</p>
-      <div class="row"><button type="button" class="btn sm" id="gh-load">⬇ Load latest from GitHub</button>${g.token ? '<button type="button" class="btn sm danger" id="gh-forget">Forget token</button>' : ''}</div>
+      <h3 style="margin:18px 0 6px">Publishing</h3>
+      <p class="help" style="margin:0 0 12px">Your changes are saved into <code>${esc(`${t.owner}/${t.repo}`)}</code> → <code>${esc(t.path)}</code> (branch <code>${esc(t.branch)}</code>). Only <b>@${esc(rec.entry.github)}</b> can edit this dashboard.</p>
+      <div class="row"><button type="button" class="btn sm" id="gh-load">⬇ Load latest from GitHub</button><button type="button" class="btn sm" data-act="account">Account…</button></div>
 
       <h3 style="margin:18px 0 6px">Visitor comments</h3>
-      <p class="help" style="margin:0 0 12px">Comments on meeting entries are stored in a free <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">Supabase</a> project. See the README for the 5-minute setup. These two values are public by design and are published with the dashboard.</p>
+      <p class="help" style="margin:0 0 12px">Comments on meeting entries are stored in a free <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">Supabase</a> project. See the README for the 5-minute setup. These two values are public by design and are published with the dashboard. Leave them empty to use the group's shared setup${state.registry.meta.comments.url ? ' (set)' : ' (none yet)'}.</p>
       <label class="field"><span>Supabase project URL</span><input type="text" name="sbUrl" value="${esc(meta.comments.url)}" placeholder="https://xxxx.supabase.co" autocapitalize="off" spellcheck="false"></label>
       <label class="field"><span>Public key (anon / publishable)</span><input type="text" name="sbKey" value="${esc(meta.comments.key)}" placeholder="sb_publishable_… or eyJ…" autocapitalize="off" spellcheck="false"></label>
       <div class="row"><button type="button" class="btn sm" id="sql-copy">⧉ Copy setup SQL</button></div>
@@ -1205,24 +1468,18 @@ function openSettings(note = '') {
       <div class="row">
         <label class="btn sm" style="cursor:pointer">⬆ Import .json<input type="file" id="imp" accept="application/json,.json" hidden></label>
         <button type="button" class="btn sm" data-act="export">⇪ Export…</button>
-        <button type="button" class="btn sm danger" id="leave-owner">Stop editing on this device</button>
       </div>
     </form>`,
     footer: '<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="set-form">Save</button>',
     onMount(m) {
       const form = $('#set-form', m);
-      const readGh = () => {
-        const fd = new FormData(form);
-        state.gh = { owner: fd.get('owner').trim(), repo: fd.get('repo').trim(), branch: fd.get('branch').trim() || 'main', path: fd.get('path').trim().replace(/^\/+/, '') || 'data.json', token: fd.get('token').trim() };
-        store.set(KEY.gh, state.gh);
-      };
       form.addEventListener('submit', (e) => {
-        e.preventDefault(); readGh();
+        e.preventDefault();
         const fd = new FormData(form);
-        const t = fd.get('title').trim() || 'Research Progress'; const sub = fd.get('subtitle').trim();
+        const ti = fd.get('title').trim() || rec.entry.name; const sub = fd.get('subtitle').trim();
         const sb = { url: fd.get('sbUrl').trim(), key: fd.get('sbKey').trim() };
-        const changed = t !== meta.title || sub !== meta.subtitle || sb.url !== meta.comments.url || sb.key !== meta.comments.key;
-        meta.title = t; meta.subtitle = sub; meta.comments = sb;
+        const changed = ti !== meta.title || sub !== meta.subtitle || sb.url !== meta.comments.url || sb.key !== meta.comments.key;
+        meta.title = ti; meta.subtitle = sub; meta.comments = sb;
         closeModal();
         if (changed) commit('Settings saved'); else { render(); toast('Settings saved'); }
       });
@@ -1231,16 +1488,9 @@ function openSettings(note = '') {
         catch { openModal({ title: 'Setup SQL', body: `<textarea readonly rows="14" style="font-family:monospace;font-size:13px">${esc(COMMENTS_SQL)}</textarea>` }); }
       });
       $('#gh-load', m).addEventListener('click', async () => {
-        readGh();
-        if (!ghReady()) { toast('Fill in user, repository and token first'); return; }
         if (state.dirty && !confirm('Replace your unpublished changes with the version on GitHub?')) return;
-        if (await loadFromGitHub()) closeModal();
-      });
-      $('#gh-forget', m)?.addEventListener('click', () => { state.gh.token = ''; store.set(KEY.gh, state.gh); form.token.value = ''; toast('Token removed from this device'); });
-      $('#leave-owner', m).addEventListener('click', () => {
-        if (state.dirty && !confirm('You have unpublished changes. Leave editing anyway? (Your draft stays on this device.)')) return;
-        state.owner = false; state.edit = false; store.del(KEY.owner); store.set(KEY.edit, false);
-        closeModal(); render(); toast('This device is now view-only. Open the page with ?admin to edit again.', 4500);
+        if (await loadFromGitHub(rec)) closeModal();
+        else toast('Nothing published on GitHub yet, or the token cannot read it', 5000);
       });
       $('#imp', m).addEventListener('change', async (e) => {
         const file = e.target.files[0]; if (!file) return;
@@ -1256,20 +1506,33 @@ function openSettings(note = '') {
   });
 }
 
-// Lets the owner unlock editing without the ?admin URL (e.g. in a Home Screen
-// web app, which has its own storage and opens the manifest start URL).
-// A token that can read the repository through the API is the proof of ownership.
-function openOwnerSignIn() {
-  const g = state.gh;
+// Signing in = pasting a GitHub token. GitHub tells us whose token it is, and
+// that username decides which dashboard (if any) this device may edit.
+async function whoAmI(token) {
+  const j = await ghApi('https://api.github.com/user', { token });
+  return j.login;
+}
+const hubFields = () => `<details class="adv"${state.hub.owner && state.hub.repo ? '' : ' open'}><summary>Site repository</summary>
+    <p class="help" style="margin:8px 0 10px">The repository that hosts this site and <code>${REGISTRY}</code>. It is detected automatically on GitHub Pages.</p>
+    <div class="grid2">
+      <label class="field"><span>GitHub user / org</span><input type="text" name="hubOwner" value="${esc(state.hub.owner)}" autocapitalize="off" spellcheck="false"></label>
+      <label class="field"><span>Repository</span><input type="text" name="hubRepo" value="${esc(state.hub.repo)}" autocapitalize="off" spellcheck="false"></label>
+      <label class="field"><span>Branch</span><input type="text" name="hubBranch" value="${esc(state.hub.branch)}" autocapitalize="off" spellcheck="false"></label>
+    </div></details>`;
+const readHub = (form) => {
+  state.hub = { owner: form.hubOwner.value.trim(), repo: form.hubRepo.value.trim(), branch: form.hubBranch.value.trim() || 'main' };
+  store.set(KEY.hub, state.hub);
+};
+
+function openSignIn(note = '') {
   openModal({
-    title: 'Owner sign-in',
+    title: 'Student sign-in',
     body: `<form id="own-form" autocomplete="off">
-      <p class="muted small" style="margin-top:0">Paste your GitHub access token to edit on this device. Visitors don't need this; they can only view.</p>
-      <div class="grid2">
-        <label class="field"><span>GitHub user / org</span><input type="text" name="owner" value="${esc(g.owner)}" autocapitalize="off" spellcheck="false" required></label>
-        <label class="field"><span>Repository</span><input type="text" name="repo" value="${esc(g.repo)}" autocapitalize="off" spellcheck="false" required></label>
-      </div>
-      <label class="field"><span>Access token</span><input type="password" name="token" value="${esc(g.token)}" placeholder="github_pat_…" autocapitalize="off" spellcheck="false" required></label>
+      ${note ? `<div class="banner" style="padding:0;margin:0 0 14px"><div class="inner info">${esc(note)}</div></div>` : ''}
+      <p class="muted small" style="margin-top:0">Paste your GitHub access token to edit <b>your own</b> dashboard on this device. Visitors don't need this; they can only view.</p>
+      <label class="field"><span>Access token</span><input type="password" name="token" value="${esc(state.auth.token)}" placeholder="github_pat_…" autocapitalize="off" spellcheck="false" required></label>
+      <p class="help">Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a> for the repository that holds your data, with <b>Contents: Read and write</b>. The token stays in this browser and is only sent to <code>api.github.com</code>.</p>
+      ${hubFields()}
     </form>`,
     footer: '<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="own-form">Sign in</button>',
     onMount(m) {
@@ -1278,33 +1541,157 @@ function openOwnerSignIn() {
         e.preventDefault();
         const btn = $('.modal-foot [type=submit]', m);
         btn.disabled = true; btn.textContent = 'Checking…';
-        const prev = state.gh;
-        state.gh = { ...prev, owner: form.owner.value.trim(), repo: form.repo.value.trim(), token: form.token.value.trim() };
+        const token = form.token.value.trim();
         try {
-          const { data, sha } = await ghGet();
-          store.set(KEY.gh, state.gh);
-          state.owner = true; state.edit = true;
-          store.set(KEY.owner, true); store.set(KEY.edit, true);
-          state.data = normalize(data); state.sha = sha; state.dirty = false; saveDraft();
-          closeModal(); render();
-          toast('Signed in ✓  You can edit on this device now.', 3500);
+          const login = await whoAmI(token);
+          readHub(form);
+          signIn(token, login);
+          closeModal();
+          const me = myRecord();
+          if (me) {
+            state.editPref = true; store.set(KEY.edit, true);
+            location.hash = href('', me);
+            render();
+            toast(`Signed in as @${login} ✓  You can edit your dashboard now.`, 3500);
+          } else {
+            render();
+            toast(isAdmin() ? `Signed in as @${login} (admin) ✓` : `Signed in as @${login}, but no student uses this GitHub account yet. Ask an admin to add you.`, 6000);
+          }
         } catch (err) {
-          state.gh = prev;
           btn.disabled = false; btn.textContent = 'Sign in';
-          toast(err.status === 401 ? 'That token was not accepted by GitHub' : err.status === 404 ? 'Repository not found, or the token has no access to it' : `Sign-in failed: ${err.message}`, 5000);
+          toast(err.status === 401 ? 'That token was not accepted by GitHub' : `Sign-in failed: ${err.message}`, 5000);
         }
       });
     },
   });
 }
 
-// The view-only link for visitors: this page without ?admin or any route.
+function signIn(token, login) {
+  state.auth = { token, login };
+  store.set(KEY.auth, state.auth);
+  // Records loaded before signing in may now be ours: reload them to pick up a draft and the API version.
+  for (const rec of state.students.values()) if (canEdit(rec) && !rec.dirty) resetRecord(rec);
+  if (isAdmin()) refreshRegistry();
+}
+
+function openAccount() {
+  const me = myRecord();
+  openModal({
+    title: 'Account',
+    body: `<form id="acc-form" autocomplete="off">
+      <p style="margin-top:0">Signed in as <b>@${esc(state.auth.login || '…')}</b>${isAdmin() ? ' <span class="pill">admin</span>' : ''}</p>
+      <p class="muted small">${me ? `You can edit <a href="${href('', me)}" data-close-nav>${esc(me.entry.name)}</a>. Everyone else's dashboards are view-only for you.` : 'No student uses this GitHub account, so every dashboard is view-only for you.'}</p>
+      ${hubFields()}
+    </form>`,
+    footer: '<button class="btn danger" id="sign-out">Sign out on this device</button><span class="spacer"></span><button class="btn" data-close>Close</button><button class="btn primary" type="submit" form="acc-form">Save</button>',
+    onMount(m) {
+      const form = $('#acc-form', m);
+      form.addEventListener('submit', (e) => { e.preventDefault(); readHub(form); closeModal(); render(); toast('Saved'); });
+      $('#sign-out', m).addEventListener('click', () => {
+        const dirty = [...state.students.values()].some((r) => canEdit(r) && r.dirty);
+        if (dirty && !confirm('You have unpublished changes. Sign out anyway? (Your draft stays on this device.)')) return;
+        state.auth = { token: '', login: '' }; store.del(KEY.auth);
+        state.editPref = false; store.set(KEY.edit, false);
+        for (const rec of state.students.values()) if (rec.dirty) resetRecord(rec);
+        closeModal(); render(); toast('Signed out. This device is view-only now.', 4000);
+      });
+    },
+  });
+}
+
+// ---- roster (admins)
+async function refreshRegistry() {
+  if (!hubReady()) return;
+  try { setRegistry((await ghGet(hubTarget())).data); render(); } catch { /* keep the published copy */ }
+}
+
+function openRoster() {
+  const list = state.registry.students;
+  openModal({
+    title: 'Manage students',
+    body: `<p class="muted small" style="margin-top:0">Each student signs in with their own GitHub account and can only edit their own dashboard. Changes here are committed to <code>${REGISTRY}</code> right away.</p>
+      <div class="mini-list">${list.map((e) => `<div class="mini st-planned" style="cursor:auto">
+        <span class="avatar sm" style="--av:${avatarColor(e.id)}" aria-hidden="true">${esc(initials(e.name))}</span>
+        <div class="body"><div class="t">${esc(e.name)}</div><div class="s">@${esc(e.github || '—')} · ${esc(e.repo ? `${e.repo}/${e.path || 'data.json'}` : e.path || `students/${e.id}.json`)}</div></div>
+        <div class="acts"><button class="btn sm" data-act="edit-student" data-id="${esc(e.id)}">✎ Edit</button></div></div>`).join('') || '<p class="muted small">No students yet.</p>'}</div>`,
+    footer: '<button class="btn" data-close>Close</button><button class="btn primary" data-act="add-student">＋ Add student</button>',
+  });
+}
+
+function openStudentForm(id) {
+  const e = id ? state.registry.students.find((x) => x.id === id) : null;
+  const own = !!e?.repo;
+  openModal({
+    title: e ? 'Edit student' : 'Add student',
+    body: `<form id="stu-form" autocomplete="off">
+      <label class="field"><span>Name</span><input type="text" name="name" required value="${esc(e?.name || '')}" placeholder="e.g. Purin"></label>
+      <label class="field"><span>GitHub username</span><input type="text" name="github" required value="${esc(e?.github || '')}" placeholder="e.g. octocat" autocapitalize="off" spellcheck="false"></label>
+      <p class="help">Only this GitHub account can edit the student's dashboard.</p>
+      <label class="field"><span>Page address</span><input type="text" name="id" value="${esc(e?.id || '')}" placeholder="made from the name" autocapitalize="off" spellcheck="false" ${e ? 'disabled' : ''}></label>
+      <p class="help">The link is <code>#/s/<i>address</i></code>.${e ? ' It can’t be changed once created.' : ''}</p>
+      <label class="field"><span>Where the data is stored</span><select name="where">
+        <option value="hub" ${own ? '' : 'selected'}>In this repository (students/&lt;address&gt;.json)</option>
+        <option value="own" ${own ? 'selected' : ''}>In the student's own repository</option></select></label>
+      <div class="own-only">
+        <div class="grid2">
+          <label class="field"><span>Repository (owner/name)</span><input type="text" name="repo" value="${esc(e?.repo || '')}" placeholder="octocat/research-data" autocapitalize="off" spellcheck="false"></label>
+          <label class="field"><span>Branch</span><input type="text" name="branch" value="${esc(e?.branch || 'main')}" autocapitalize="off" spellcheck="false"></label>
+        </div>
+        <label class="field"><span>Data file</span><input type="text" name="path" value="${esc(e?.repo ? e.path || 'data.json' : 'data.json')}" autocapitalize="off" spellcheck="false"></label>
+      </div>
+      <p class="help hub-only">The student needs write access to this repository (Settings → Collaborators). The app only lets them edit their own file; the commit history shows who changed what.</p>
+      <p class="help own-only">Strict separation: GitHub itself stops anyone but the student from writing. The repository must be public so visitors can read it.</p>
+    </form>`,
+    footer: `${e ? '<button class="btn danger" id="stu-del">Remove</button><span class="spacer"></span>' : ''}<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="stu-form">${e ? 'Save' : 'Add'}</button>`,
+    onMount(m) {
+      const form = $('#stu-form', m);
+      const sync = () => {
+        const o = form.where.value === 'own';
+        $$('.own-only', m).forEach((el) => el.classList.toggle('hidden', !o));
+        $$('.hub-only', m).forEach((el) => el.classList.toggle('hidden', o));
+        form.repo.required = o;
+      };
+      form.where.addEventListener('change', sync); sync();
+      const save = async (change, msg, done) => {
+        $$('.modal-foot .btn', m).forEach((b) => { b.disabled = true; });
+        try { await saveRegistry(change, msg); closeModal(); render(); toast(done, 4000); }
+        catch (err) { $$('.modal-foot .btn', m).forEach((b) => { b.disabled = false; }); toast(`Could not save: ${err.message}`, 6000); }
+      };
+      form.addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        const fd = new FormData(form);
+        const v = { name: fd.get('name').trim(), github: fd.get('github').trim().replace(/^@/, '') };
+        if (fd.get('where') === 'own') {
+          const repo = fd.get('repo').trim().replace(/^https:\/\/github\.com\//, '').replace(/\/+$/, '');
+          if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { toast('Repository should look like owner/name'); form.repo.focus(); return; }
+          Object.assign(v, { repo, branch: fd.get('branch').trim() || 'main', path: fd.get('path').trim().replace(/^\/+/, '') || 'data.json' });
+        }
+        const sid = e ? e.id : slug(fd.get('id').trim() || v.name);
+        if (!e && state.registry.students.some((x) => x.id === sid)) { toast('That page address is already used'); form.id.focus(); return; }
+        save((reg) => {
+          const i = reg.students.findIndex((x) => x.id === sid);
+          const entry = { id: sid, ...v };
+          if (i >= 0) { const { repo, branch, path, ...rest } = reg.students[i]; reg.students[i] = { ...rest, ...entry }; }
+          else reg.students.push(entry);
+        }, `${e ? 'Update' : 'Add'} student: ${v.name}`, e ? 'Student saved ✓' : `${v.name} added ✓  Visitors will see them within a minute or two.`);
+      });
+      $('#stu-del', m)?.addEventListener('click', () => {
+        if (!confirm(`Remove ${e.name} from the student list?\n\nTheir data file is kept on GitHub; adding them again with the same address brings it back.`)) return;
+        save((reg) => { reg.students = reg.students.filter((x) => x.id !== e.id); }, `Remove student: ${e.name}`, `${e.name} removed`);
+      });
+    },
+  });
+}
+
+// The view-only link for visitors: this page without ?admin, on the current student.
 const viewerUrl = () => `${location.origin}${location.pathname.replace(/index\.html$/, '')}`;
 function openShare() {
-  const url = viewerUrl();
+  const rec = state.rec;
+  const url = rec ? `${viewerUrl()}${href('', rec)}` : viewerUrl();
+  const title = rec ? state.data?.meta.title || rec.entry.name : state.registry.meta.title;
   openModal({
     title: 'Share with visitors',
-    body: `<p class="muted small" style="margin-top:0">Anyone with this link can follow your progress. It is view-only — nobody can edit through it.</p>
+    body: `<p class="muted small" style="margin-top:0">Anyone with this link can follow ${rec ? `${esc(rec.entry.name)}’s` : 'everyone’s'} progress. It is view-only — nobody can edit through it.</p>
       <input type="text" id="share-url" readonly value="${esc(url)}" aria-label="Visitor link">`,
     footer: `${navigator.share ? '<button class="btn" id="share-native">Share…</button>' : ''}<button class="btn primary" id="share-copy">Copy link</button>`,
     onMount(m) {
@@ -1316,7 +1703,7 @@ function openShare() {
         toast('Link copied ✓');
       });
       $('#share-native', m)?.addEventListener('click', () => {
-        navigator.share({ title: state.data.meta.title, text: `${state.data.meta.title} — research progress`, url }).catch(() => {});
+        navigator.share({ title, text: `${title} — research progress`, url }).catch(() => {});
       });
     },
   });
@@ -1333,13 +1720,19 @@ function duplicateStage(id) {
 
 // ---------------------------------------------------------------- events
 const actions = {
-  'owner-signin'() { openOwnerSignIn(); },
-  'toggle-edit'() { state.edit = !state.edit; store.set(KEY.edit, state.edit); render(); if (state.edit && !ghReady()) toast('Tip: connect GitHub in ⚙︎ Settings to publish changes', 4000); },
+  signin() { openSignIn(); },
+  account() { closeModal(); openAccount(); },
+  roster() { openRoster(); },
+  'add-student'() { closeModal(); openStudentForm(); },
+  'edit-student'(el) { closeModal(); openStudentForm(el.dataset.id); },
+  'toggle-edit'() { state.editPref = !state.edit; store.set(KEY.edit, state.editPref); render(); },
   publish,
-  discard() {
+  async discard() {
     if (!confirm('Discard all unpublished changes on this device?')) return;
-    store.del(KEY.draft); state.dirty = false;
-    (ghReady() ? loadFromGitHub({ quiet: true }) : fetchPublished().then((d) => { state.data = normalize(d); state.sha = null; saveDraft(); render(); })).then(() => toast('Changes discarded'));
+    const rec = state.rec;
+    store.del(draftKey(rec)); rec.dirty = false;
+    if (!(await loadFromGitHub(rec, { quiet: true }))) { rec.data = await fetchPublished(rec).catch(() => emptyData(rec)); rec.sha = null; render(); }
+    toast('Changes discarded');
   },
   settings() { openSettings(); },
   export() { closeModal(); openExport(); },
@@ -1349,7 +1742,7 @@ const actions = {
     if (kind === 'json') exportJSON(scope);
     else if (kind === 'csv') exportCSV(scope);
     else if (kind === 'ics') exportICS(scope);
-    else location.hash = `#/report/${scope === 'all' ? '' : encodeURIComponent(scope)}`;
+    else location.hash = href(`report/${scope === 'all' ? '' : encodeURIComponent(scope)}`);
   },
   print() { window.print(); },
   'new-project'() { openProjectForm(); },
@@ -1365,7 +1758,7 @@ const actions = {
     const p = findProject(el.dataset.id); if (!p) return;
     if (!confirm(`Delete project “${p.title}” and all its ${p.stages.length} stages?`)) return;
     state.data.projects = state.data.projects.filter((x) => x !== p);
-    closeModal(); location.hash = '#/'; commit('Project deleted');
+    closeModal(); location.hash = href(); commit('Project deleted');
   },
   'open-stage'(el) { openStage(el.dataset.id); },
   'new-stage'(el) { closeModal(); openStageForm({ pid: el.dataset.pid, date: el.dataset.date }); },
@@ -1419,6 +1812,9 @@ document.addEventListener('click', (e) => {
   e.stopPropagation();
   fn(el, e);
 });
+document.addEventListener('input', (e) => {
+  if (e.target.matches('[data-input="student-filter"]')) filterStudents(e.target.value);
+});
 document.addEventListener('change', (e) => {
   if (e.target.matches('[data-change="cal-project"]')) { state.cal.project = e.target.value; saveCal(); render(); }
 });
@@ -1438,30 +1834,49 @@ function detectRepo() {
   return { owner: m[1], repo: seg && !seg.includes('.') ? seg : `${m[1]}.github.io` };
 }
 
+// Moves what the single-user version kept on this device (token, draft) over
+// to the student it belonged to.
+function migrateLegacy() {
+  const gh = store.get(KEY.legacyGh);
+  if (gh?.token && !state.auth.token) state.auth = { token: gh.token, login: '' };
+  if (gh?.owner && gh?.repo && !store.get(KEY.hub) && !(state.hub.owner && state.hub.repo)) {
+    state.hub = { owner: gh.owner, repo: gh.repo, branch: gh.branch || 'main' };
+    store.set(KEY.hub, state.hub);
+  }
+  const draft = store.get(KEY.draft);
+  if (draft?.data) {
+    const rec = [...state.students.values()].find((r) => sameUser(r.entry.github, gh?.owner)) || state.students.values().next().value;
+    if (rec && !store.get(draftKey(rec))) store.set(draftKey(rec), draft);
+  }
+  store.del(KEY.draft); store.del(KEY.legacyGh); store.del(KEY.legacyOwner);
+}
+
 async function boot() {
   const params = new URLSearchParams(location.search);
-  if (params.has('admin')) store.set(KEY.owner, true);
-  if (params.has('view')) store.del(KEY.owner);
-  state.owner = !!store.get(KEY.owner);
-  state.edit = state.owner && !!store.get(KEY.edit, false);
-  state.gh = { ...state.gh, ...detectRepo(), ...(store.get(KEY.gh) || {}) };
+  state.auth = { token: '', login: '', ...(store.get(KEY.auth) || {}) };
+  state.hub = { ...state.hub, ...detectRepo(), ...(store.get(KEY.hub) || {}) };
+  state.editPref = !!store.get(KEY.edit, false);
   state.cal = { ...state.cal, ...(store.get(KEY.cal) || {}) };
 
-  const draft = state.owner ? store.get(KEY.draft) : null;
   try {
-    if (draft?.dirty && draft.data) {
-      state.data = normalize(draft.data); state.sha = draft.sha || null; state.dirty = true;
-    } else {
-      state.data = normalize(await fetchPublished());
-      if (state.owner && ghReady()) loadFromGitHub({ quiet: true });
-    }
+    setRegistry(await fetchJSON(REGISTRY));
   } catch (e) {
-    if (draft?.data) { state.data = normalize(draft.data); state.sha = draft.sha || null; }
-    else {
-      $('#view').innerHTML = `<div class="card empty"><h2>Could not load data</h2><p>${esc(e.message)}</p><p class="small">If you opened <code>index.html</code> directly from disk, serve the folder instead (e.g. <code>python3 -m http.server</code>) or open the GitHub Pages address.</p></div>`;
+    if (e.status !== 404) {
+      $('#view').innerHTML = `<div class="card empty"><h2>Could not load the student list</h2><p>${esc(e.message)}</p><p class="small">If you opened <code>index.html</code> directly from disk, serve the folder instead (e.g. <code>python3 -m http.server</code>) or open the GitHub Pages address.</p></div>`;
       return;
     }
+    // No students.json: a single-user site that still keeps everything in data.json.
+    setRegistry({ meta: { title: 'Research Progress' }, students: [{ id: 'me', name: 'My research', github: state.hub.owner, path: 'data.json' }] });
+  }
+  migrateLegacy();
+  if (state.auth.token) {
+    // A token carried over from the single-user version: ask GitHub whose it is
+    // before loading anything, so the right draft and edit rights apply.
+    if (!state.auth.login) { try { state.auth.login = await whoAmI(state.auth.token); } catch { /* offline: stays view-only for now */ } }
+    store.set(KEY.auth, state.auth);
+    if (isAdmin()) refreshRegistry();
   }
   render();
+  if (params.has('admin') && !state.auth.token) openSignIn();
 }
 boot();
