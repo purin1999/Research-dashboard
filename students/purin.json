@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-04T12:56:05.680Z",
+    "updated": "2026-10-04T12:57:58.569Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -1012,19 +1012,6 @@
           "notes": "",
           "conditions": [],
           "date": "2026-10-30",
-          "endDate": "",
-          "allDay": true,
-          "start": "",
-          "end": "",
-          "outcome": null,
-          "comment": ""
-        },
-        {
-          "id": "s_sc4ue3e7hl",
-          "name": "Meeting (expected)",
-          "notes": "In-situ DLS paper structure",
-          "conditions": [],
-          "date": "2026-10-09",
           "endDate": "",
           "allDay": true,
           "start": "",
