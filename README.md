@@ -11,8 +11,10 @@ progress, and **each student can only edit their own**.
   at the bottom of any page)
 - **Repository:** <https://github.com/purin1999/Research-dashboard>
 
-- **All students** (home page): one card per student with their overall progress across ongoing projects, tasks in the
-  next 7 days, stages awaiting an update and what's up next. Tap a card to open that student's dashboard.
+- **All students** (home page): made for the professor to skim the whole group. Students are grouped by grade
+  (D3 → B4). Each row shows the student's ongoing projects with a progress bar each, their next stage, days off in
+  the next 7 days, and when they last updated: grey within a week, 🟠 orange after 1 week, 🔴 red after 2 weeks.
+  Switch between **☰ List** (default, compact for 20+ people) and **▦ Cards**. Tap a student to open their dashboard.
 
 - **Dashboard** (per student): every ongoing project with a progress bar, what's next, and what still needs an update.
 - **Project page**: tap a project to see its stages. Each stage has an action name, experiment conditions
@@ -58,13 +60,15 @@ students/<id>.json    each student's data: what visitors see
 {
   "meta": { "title": "Research Progress", "subtitle": "…", "admins": ["purin1999"] },
   "students": [
-    { "id": "purin", "name": "Purin", "github": "purin1999" },
-    { "id": "alice", "name": "Alice", "github": "alice-gh", "repo": "alice-gh/research-data" }
+    { "id": "purin", "name": "Purin", "grade": "D2", "github": "purin1999" },
+    { "id": "alice", "name": "Alice", "grade": "M1", "github": "alice-gh", "repo": "alice-gh/research-data" }
   ]
 }
 ```
 
 - `id` is the page address (`#/s/purin`) and, by default, the data file name (`students/purin.json`).
+- `grade` (optional) groups students on the home page. The order is `meta.grades`, by default
+  `["D3", "D2", "D1", "M2", "M1", "B4"]`; other grades follow, and students without a grade come last.
 - `github` is the **only** GitHub account allowed to edit that student's dashboard.
 - `repo` (optional, with optional `branch` and `path`, default `main` and `data.json`) keeps the student's data in
   their own public repository instead of this one.
@@ -95,7 +99,7 @@ repository.
    (GitHub Pages on a free account needs a **public** repository.)
 2. Put your own GitHub username in `admins` in `students.json`, then sign in on the site (see below).
 3. **Add each student**: on the home page tap **👥 Manage students → ＋ Add student**, and enter their name and GitHub
-   username. Then either
+   username, and optionally their grade. Then either
    - *Data in this repository* (default): invite them under *Settings → Collaborators* so they can publish, or
    - *Data in their own repository*: they create a **public** repository (it can be empty) and you enter it as
      `owner/name`. No access to this repository is needed.
