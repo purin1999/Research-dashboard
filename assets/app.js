@@ -60,6 +60,7 @@ const state = {
   rec: null,        // the student whose pages are open
   auth: { token: '', login: '' }, // GitHub identity signed in on this device
   hub: { owner: '', repo: '', branch: 'main' }, // the repository that hosts this site and students.json
+  hubLocked: false, // on GitHub Pages the hub is known from the address and can't be changed
   editPref: false,  // the signed-in student wants edit controls
   homeView: 'list', // overview layout: 'list' or 'cards' (remembered per device)
   edit: false,      // edit controls visible (editPref and allowed to edit the open student)
@@ -986,6 +987,7 @@ function gradeGroups(recs) {
   return groups;
 }
 
+const gradeTag = (e) => (e.grade ? ` <span class="grade">${esc(e.grade)}</span>` : '');
 const avatar = (e, cls = '') => `<span class="avatar ${cls}" style="--av:${avatarColor(e.id)}" aria-hidden="true">${esc(initials(e.name))}</span>`;
 const projLine = (x) => `<div class="sp" title="${esc(`${x.p.title} · ${x.done}/${x.counted} stages done`)}"><span class="sp-name"><i style="background:${esc(x.p.color)}"></i>${esc(x.p.title)}</span>
   <span class="pbar sm"><span class="seg-done" style="width:${x.pct}%"></span></span><b>${x.pct}%</b></div>`;
@@ -994,7 +996,7 @@ const awayLine = (m) => (m.away.length ? `<div class="sr-away">🏖 Away ${m.awa
 
 function studentRow(rec) {
   const e = rec.entry; const f = freshness(rec);
-  const who = `<div class="sr-who">${avatar(e, 'sm')}<div class="sc-name"><b>${esc(e.name)}</b>${canEdit(rec) ? ' <span class="pill you">You</span>' : ''}<div class="muted small">${esc(rec.data?.meta.subtitle || '')}</div></div></div>`;
+  const who = `<div class="sr-who">${avatar(e, 'sm')}<div class="sc-name"><b>${esc(e.name)}</b>${gradeTag(e)}${canEdit(rec) ? ' <span class="pill you">You</span>' : ''}<div class="muted small">${esc(rec.data?.meta.subtitle || '')}</div></div></div>`;
   let body;
   if (rec.error) body = `<div class="sr-body muted small">Could not load (${esc(rec.error)})</div>`;
   else if (!rec.data) body = '<div class="sr-body muted small">Loading…</div>';
@@ -1010,7 +1012,7 @@ function studentRow(rec) {
 function studentCard(rec) {
   const e = rec.entry; const f = freshness(rec);
   const head = `<div class="sc-head">${avatar(e)}
-    <div class="sc-name"><h3>${esc(e.name)}</h3><div class="muted small">${esc([e.grade, rec.data?.meta.subtitle].filter(Boolean).join(' · '))}</div></div>
+    <div class="sc-name"><h3>${esc(e.name)}${gradeTag(e)}</h3><div class="muted small">${esc(rec.data?.meta.subtitle || '')}</div></div>
     ${canEdit(rec) ? '<span class="pill you">You</span>' : ''}</div>`;
   let body;
   if (rec.error) body = `<p class="muted small">Could not load (${esc(rec.error)}).</p>`;
@@ -1028,27 +1030,26 @@ function studentCard(rec) {
 
 function viewHome() {
   const { meta } = state.registry;
-  const recs = [...state.students.values()];
+  // One list in grade order (D3 → B4, then other grades, then no grade); the grade sits next to each name.
+  const recs = gradeGroups([...state.students.values()]).flatMap((g) => g.recs);
   const cards = state.homeView === 'cards';
-  const groups = gradeGroups(recs);
-  const showHeads = groups.length > 1 || !!groups[0]?.grade;
   return `
     <div class="page-head">
       <div><h1>${esc(meta.title)}</h1>${meta.subtitle ? `<div class="sub">${esc(meta.subtitle)}</div>` : ''}</div>
     </div>
+    <form class="home-search" data-form="student-search" role="search">
+      <input type="search" class="filter" data-input="student-filter" placeholder="🔍 Search by name…" aria-label="Search students" autocomplete="off" enterkeyhint="go">
+    </form>
     <div class="home-bar">
-      ${recs.length > 4 ? '<input type="text" class="filter" data-input="student-filter" placeholder="Search students…" aria-label="Search students">' : '<span class="spacer"></span>'}
+      <span class="muted small" id="student-count">${recs.length} member${recs.length === 1 ? '' : 's'}</span>
+      <span class="spacer"></span>
       <div class="seg" role="group" aria-label="Layout">${[['list', '☰ List'], ['cards', '▦ Cards']].map(([k, l]) => `<button data-act="home-view" data-v="${k}" class="${state.homeView === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       ${isAdmin() ? '<button class="btn sm" data-act="roster">👥 Manage</button>' : ''}
     </div>
-    ${!recs.length ? '' : cards
-      // Cards flow in one grid (sorted by grade, shown on each card) so small grades don't leave gaps.
-      ? `<div class="projects students" style="margin-top:14px">${groups.flatMap((g) => g.recs).map(studentCard).join('')}</div>`
-      : groups.map((g) => `<section class="grade-group">
-        ${showHeads ? `<div class="section-title">${esc(g.grade || 'Other members')} <span class="count">${g.recs.length}</span></div>` : ''}
-        <div class="slist">${g.recs.map(studentRow).join('')}</div>
-      </section>`).join('')}
-    ${recs.length ? '' : `<div class="card empty">No students yet.${isAdmin() ? '<br><button class="btn primary" data-act="add-student">＋ Add a student</button>' : ' An admin adds students to <code>students.json</code>.'}</div>`}
+    ${!recs.length ? `<div class="card empty">No students yet.${isAdmin() ? '<br><button class="btn primary" data-act="add-student">＋ Add a student</button>' : ' An admin adds students to <code>students.json</code>.'}</div>`
+      : cards ? `<div class="projects students">${recs.map(studentCard).join('')}</div>`
+      : `<div class="slist">${recs.map(studentRow).join('')}</div>`}
+    <p class="muted small hidden" id="no-match">No member matches your search.</p>
     <div class="legend fresh-legend"><span class="fresh">Updated in the last week</span><span class="fresh stale">1–2 weeks ago</span><span class="fresh old">Over 2 weeks ago</span></div>`;
 }
 
@@ -1155,8 +1156,13 @@ function render() {
 
 function filterStudents(q) {
   const t = q.trim().toLowerCase();
-  $$('.student-item').forEach((c) => c.classList.toggle('hidden', !!t && !c.dataset.name.includes(t)));
-  $$('.grade-group').forEach((g) => g.classList.toggle('hidden', !$('.student-item:not(.hidden)', g)));
+  const items = $$('.student-item');
+  items.forEach((c) => c.classList.toggle('hidden', !!t && !c.dataset.name.includes(t)));
+  const shown = items.filter((c) => !c.classList.contains('hidden')).length;
+  $('.slist')?.classList.toggle('hidden', !shown);
+  $('#no-match')?.classList.toggle('hidden', !!shown);
+  const count = $('#student-count');
+  if (count) count.textContent = t ? `${shown} of ${items.length} member${items.length === 1 ? '' : 's'}` : `${items.length} member${items.length === 1 ? '' : 's'}`;
 }
 
 // ---------------------------------------------------------------- modal / toast
@@ -1562,14 +1568,17 @@ async function whoAmI(token) {
   const j = await ghApi('https://api.github.com/user', { token });
   return j.login;
 }
-const hubFields = () => `<details class="adv"${state.hub.owner && state.hub.repo ? '' : ' open'}><summary>Site repository</summary>
+const hubFields = () => (state.hubLocked
+  ? `<p class="help" style="margin:10px 0 0">Site repository: <code>${esc(`${state.hub.owner}/${state.hub.repo}`)}</code> (branch <code>${esc(state.hub.branch)}</code>), set by this site's address.</p>`
+  : `<details class="adv"${state.hub.owner && state.hub.repo ? '' : ' open'}><summary>Site repository</summary>
     <p class="help" style="margin:8px 0 10px">The repository that hosts this site and <code>${REGISTRY}</code>. It is detected automatically on GitHub Pages.</p>
     <div class="grid2">
       <label class="field"><span>GitHub user / org</span><input type="text" name="hubOwner" value="${esc(state.hub.owner)}" autocapitalize="off" spellcheck="false"></label>
       <label class="field"><span>Repository</span><input type="text" name="hubRepo" value="${esc(state.hub.repo)}" autocapitalize="off" spellcheck="false"></label>
       <label class="field"><span>Branch</span><input type="text" name="hubBranch" value="${esc(state.hub.branch)}" autocapitalize="off" spellcheck="false"></label>
-    </div></details>`;
+    </div></details>`);
 const readHub = (form) => {
+  if (state.hubLocked) return;
   state.hub = { owner: form.hubOwner.value.trim(), repo: form.hubRepo.value.trim(), branch: form.hubBranch.value.trim() || 'main' };
   store.set(KEY.hub, state.hub);
 };
@@ -1868,6 +1877,12 @@ document.addEventListener('click', (e) => {
   e.stopPropagation();
   fn(el, e);
 });
+document.addEventListener('submit', (e) => {
+  if (!e.target.matches('[data-form="student-search"]')) return;
+  e.preventDefault();
+  const first = $$('.student-item').find((c) => !c.classList.contains('hidden'));
+  if (first) location.hash = first.getAttribute('href');
+});
 document.addEventListener('input', (e) => {
   if (e.target.matches('[data-input="student-filter"]')) filterStudents(e.target.value);
 });
@@ -1895,7 +1910,7 @@ function detectRepo() {
 function migrateLegacy() {
   const gh = store.get(KEY.legacyGh);
   if (gh?.token && !state.auth.token) state.auth = { token: gh.token, login: '' };
-  if (gh?.owner && gh?.repo && !store.get(KEY.hub) && !(state.hub.owner && state.hub.repo)) {
+  if (gh?.owner && gh?.repo && !state.hubLocked && !store.get(KEY.hub) && !(state.hub.owner && state.hub.repo)) {
     state.hub = { owner: gh.owner, repo: gh.repo, branch: gh.branch || 'main' };
     store.set(KEY.hub, state.hub);
   }
@@ -1910,7 +1925,13 @@ function migrateLegacy() {
 async function boot() {
   const params = new URLSearchParams(location.search);
   state.auth = { token: '', login: '', ...(store.get(KEY.auth) || {}) };
-  state.hub = { ...state.hub, ...detectRepo(), ...(store.get(KEY.hub) || {}) };
+  // On GitHub Pages the address says which repository hosts the site, so that
+  // always wins over anything saved on this device; elsewhere (e.g. localhost)
+  // it is whatever was entered in the sign-in dialog.
+  const detected = detectRepo();
+  state.hubLocked = !!detected.owner;
+  state.hub = state.hubLocked ? { ...detected, branch: 'main' } : { ...state.hub, ...(store.get(KEY.hub) || {}) };
+  if (state.hubLocked) store.del(KEY.hub);
   state.editPref = !!store.get(KEY.edit, false);
   state.homeView = store.get(KEY.home) === 'cards' ? 'cards' : 'list';
   state.cal = { ...state.cal, ...(store.get(KEY.cal) || {}) };

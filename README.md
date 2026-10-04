@@ -11,8 +11,9 @@ progress, and **each student can only edit their own**.
   at the bottom of any page)
 - **Repository:** <https://github.com/purin1999/Research-dashboard>
 
-- **All students** (home page): made for the professor to skim the whole group. Students are grouped by grade
-  (D3 → B4). Each row shows the student's ongoing projects with a progress bar each, their next stage, days off in
+- **All students** (home page): made for the professor to skim the whole group. Students are listed in grade order
+  (D3 → B4), with the grade shown next to each name, and the 🔍 search bar at the top finds a member by name
+  (press Enter to open the first match). Each row shows the student's ongoing projects with a progress bar each, their next stage, days off in
   the next 7 days, and when they last updated: grey within a week, 🟠 orange after 1 week, 🔴 red after 2 weeks.
   Switch between **☰ List** (default, compact for 20+ people) and **▦ Cards**. Tap a student to open their dashboard.
 
@@ -67,7 +68,7 @@ students/<id>.json    each student's data: what visitors see
 ```
 
 - `id` is the page address (`#/s/purin`) and, by default, the data file name (`students/purin.json`).
-- `grade` (optional) groups students on the home page. The order is `meta.grades`, by default
+- `grade` (optional) sorts students on the home page and is shown next to their name. The order is `meta.grades`, by default
   `["D3", "D2", "D1", "M2", "M1", "B4"]`; other grades follow, and students without a grade come last.
 - `github` is the **only** GitHub account allowed to edit that student's dashboard.
 - `repo` (optional, with optional `branch` and `path`, default `main` and `data.json`) keeps the student's data in
@@ -146,7 +147,9 @@ python3 -m http.server 8000
 # open http://localhost:8000/
 ```
 
-On `localhost` the app can't guess the repository, so fill in *Site repository* in the sign-in dialog.
+On `localhost` the app can't guess the repository, so fill in *Site repository* in the sign-in dialog. On GitHub
+Pages it is always taken from the site's address (`purin1999/Research-dashboard`, branch `main`) and can't be
+changed, so a mistyped value can never send someone's changes to the wrong repository.
 
 Opening `index.html` directly from disk won't work, because the browser blocks loading the JSON files from a `file://` page.
 
