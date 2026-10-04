@@ -106,7 +106,11 @@ h3 { font-size: 1rem; }
     padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
     justify-content: space-around;
   }
-  .tabs a, .tabs button { flex-direction: column; gap: 2px; font-size: .7rem; padding: 6px 14px; border-radius: 10px; }
+  /* Tabs share the width equally so the bar never gets wider than the screen;
+     an over-wide fixed bar makes iOS lose track of the bottom while scrolling. */
+  .tabs { overflow: hidden; gap: 0; padding-left: 4px; padding-right: 4px; }
+  .tabs a, .tabs button { flex: 1 1 0; min-width: 0; flex-direction: column; gap: 2px; font-size: .7rem; padding: 6px 2px; border-radius: 10px; }
+  .tabs a > span:last-child, .tabs button > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tabs a.active { box-shadow: none; background: none; color: var(--accent); }
   .tab-ico { font-size: 1.25rem; }
   .brand span { font-size: .95rem; }
