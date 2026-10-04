@@ -23,10 +23,10 @@ progress, and **each student can only edit their own**.
 - **Calendar**: Month, Week (3 days on phone, 7 on desktop, with a time grid like Google Calendar) and List views,
   with a project filter.
 - **Status colours**
-  - 🟨 **Yellow**: the next upcoming (or in-progress) stage of each project
+  - 🟨 **Yellow**: the next upcoming stage of each project
   - 🟩 **Green**: completed as planned
   - 🟥 **Red**: not completed as planned (a comment explaining why is required)
-  - 🟧 **Orange, dashed**: the planned date has passed and the stage is waiting for you to update it
+  - 🟧 **Orange, dashed**: the stage has started and is waiting for you to update it
   - ⬜ **Grey**: planned later
   - 🤍 **White**: holidays and leave (public holidays, personal appointments, university closed). These never
     ask for a status update and don't count toward progress.
@@ -132,8 +132,8 @@ repository.
 1. On your own dashboard, **✎ Edit**, then **＋ New project** / **＋ Add stage**. Add as many conditions as you need.
 2. Give each stage a date and optionally a time range or an end date (for multi-day stages). In the week view you
    can also tap an empty time slot to create a stage there.
-3. After the planned date passes, the stage turns **orange** and appears under *Needs your update* on the
-   dashboard. Tap **✓ Done as planned** (green) or **✕ Not as planned** (red, comment required). A red stage
+3. As soon as a stage starts (00:00 on its date for all-day stages, or its start time), it turns **orange** and
+   appears under *Needs your update* on the dashboard, so you can record the result the same day. Tap **✓ Done as planned** (green) or **✕ Not as planned** (red, comment required). A red stage
    can be **↻ Rescheduled as a new stage**.
 4. Tap **⬆ Publish** to put your changes online. Until then they're saved as a draft on your device only.
 
