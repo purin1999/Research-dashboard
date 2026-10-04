@@ -8,17 +8,20 @@
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
-    }
+    },
+    "grades": [
+      "D3",
+      "D2",
+      "D1",
+      "M2",
+      "M1",
+      "B4"
+    ]
   },
   "students": [
     {
       "id": "purin",
       "name": "Purin",
-      "github": "purin1999"
-    },
-    {
-      "id": "mob-account",
-      "name": "Mob account",
       "github": "purin1999"
     }
   ]
