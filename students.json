@@ -24,6 +24,15 @@
       "name": "Purin",
       "github": "purin1999",
       "grade": "D2"
+    },
+    {
+      "id": "mob",
+      "name": "Mob account",
+      "grade": "D0",
+      "github": "purin2000",
+      "repo": "purin2000/research-progression",
+      "branch": "main",
+      "path": "data.json"
     }
   ]
 }
