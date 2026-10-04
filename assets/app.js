@@ -188,12 +188,12 @@ function computeStatuses(now = new Date(), data = state.data) {
       else {
         const r = stageRange(s);
         if (!r) st = 'unscheduled';
-        else if (r.end < now) st = 'overdue';
+        else if (r.start <= now) st = 'overdue'; // asks for a result as soon as the stage starts
         else { st = 'planned'; if (r.start < nextStart) { nextStart = r.start; next = s; } }
       }
       map.set(s.id, st);
     }
-    if (next) map.set(next.id, stageRange(next).start <= now ? 'inprogress' : 'upcoming');
+    if (next) map.set(next.id, 'upcoming');
   }
   return map;
 }
@@ -545,7 +545,7 @@ function viewDashboard() {
   const inactive = projects.filter((p) => p.status !== 'ongoing');
   const overdue = allItems().filter((x) => x.st === 'overdue').sort((a, b) => a.r.start - b.r.start);
   const in7 = addDays(now, 7);
-  const soon = allItems((p) => isLeave(p) || isEvent(p) || p.status === 'ongoing').filter((x) => x.r && x.r.end >= now && !x.s.outcome && x.r.start <= in7).sort((a, b) => a.r.start - b.r.start);
+  const soon = allItems((p) => isLeave(p) || isEvent(p) || p.status === 'ongoing').filter((x) => x.r && x.r.end >= now && !x.s.outcome && x.st !== 'overdue' && x.r.start <= in7).sort((a, b) => a.r.start - b.r.start);
 
   return `
     <div class="crumbs"><a href="#/">← All students</a></div>
@@ -667,7 +667,7 @@ function stageCard(p, s, i, sorted = false) {
       ${s.notes ? `<p class="notes">${esc(s.notes)}</p>` : ''}
       ${s.conditions.length ? `<ol class="conds">${s.conditions.map((c, k) => `<li><b>Condition ${k + 1}</b><span>${esc(c)}</span></li>`).join('')}</ol>` : ''}
       ${s.comment ? `<div class="comment"><b>${s.outcome === 'failed' ? 'Why it did not go as planned' : 'Comment'}</b>${esc(s.comment)}</div>` : ''}
-      ${st === 'overdue' ? `<div class="needs-update"><strong>This date has passed — did it go as planned?</strong>${E ? outcomeButtons(s) : ''}</div>` : ''}
+      ${st === 'overdue' ? `<div class="needs-update"><strong>This stage has started — did it go as planned?</strong>${E ? outcomeButtons(s) : ''}</div>` : ''}
       ${E ? `<div class="stage-actions">
         ${st !== 'overdue' ? `<button class="btn sm" data-act="outcome" data-id="${s.id}">Update result</button>` : ''}
         <button class="btn sm" data-act="edit-stage" data-id="${s.id}">✎ Edit</button>
@@ -1140,7 +1140,7 @@ function render() {
   const overdue = [...state.statuses.values()].filter((x) => x === 'overdue').length;
   let banner = '';
   if (canEdit() && state.dirty) banner = `<div class="banner"><div class="inner info">You have unpublished changes. Visitors still see the previous version.<span class="spacer"></span><button class="btn sm primary" data-act="publish">Publish now</button><button class="btn sm ghost" data-act="discard">Discard</button></div></div>`;
-  else if (state.edit && overdue && route.name !== 'dashboard') banner = `<div class="banner"><div class="inner st-overdue">⏰ ${overdue} stage${overdue > 1 ? 's' : ''} past the planned date need${overdue > 1 ? '' : 's'} an update.<span class="spacer"></span><a class="btn sm" href="${href()}">Review</a></div></div>`;
+  else if (state.edit && overdue && route.name !== 'dashboard') banner = `<div class="banner"><div class="inner st-overdue">⏰ ${overdue} stage${overdue > 1 ? 's' : ''} need${overdue > 1 ? '' : 's'} an update.<span class="spacer"></span><a class="btn sm" href="${href()}">Review</a></div></div>`;
   $('#banner').innerHTML = banner;
 
   // view
@@ -1209,7 +1209,7 @@ function openStage(id) {
       ${s.notes ? `<p class="notes">${esc(s.notes)}</p>` : ''}
       ${s.conditions.length ? `<div class="st-${st}"><ol class="conds">${s.conditions.map((c, k) => `<li><b>Condition ${k + 1}</b><span>${esc(c)}</span></li>`).join('')}</ol></div>` : isResearch(p) ? '<p class="muted small">No experiment conditions listed.</p>' : ''}
       ${s.comment ? `<div class="st-${st}"><div class="comment"><b>${s.outcome === 'failed' ? 'Why it did not go as planned' : 'Comment'}</b>${esc(s.comment)}</div></div>` : ''}
-      ${st === 'overdue' ? `<div class="needs-update"><strong>The planned date has passed — did it go as planned?</strong></div>` : ''}
+      ${st === 'overdue' ? `<div class="needs-update"><strong>This stage has started — did it go as planned?</strong></div>` : ''}
       ${p.comments ? commentsBox() : ''}
     </div>`,
     onMount: p.comments ? (m) => mountComments(m, s) : undefined,
