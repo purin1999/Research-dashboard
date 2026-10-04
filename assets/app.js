@@ -27,7 +27,7 @@ const LEAVE_KINDS = {
   other:    { label: 'Day off',           icon: '🏖' },
 };
 const LEAVE_COLOR = '#ffffff';
-const KEY = { auth: 'rpd.auth', hub: 'rpd.hub', draft: 'rpd.draft', edit: 'rpd.edit', cal: 'rpd.cal', legacyGh: 'rpd.gh', legacyOwner: 'rpd.owner' };
+const KEY = { home: 'rpd.home', auth: 'rpd.auth', hub: 'rpd.hub', draft: 'rpd.draft', edit: 'rpd.edit', cal: 'rpd.cal', legacyGh: 'rpd.gh', legacyOwner: 'rpd.owner' };
 const REGISTRY = 'students.json';
 
 // ---------------------------------------------------------------- utilities
@@ -61,6 +61,7 @@ const state = {
   auth: { token: '', login: '' }, // GitHub identity signed in on this device
   hub: { owner: '', repo: '', branch: 'main' }, // the repository that hosts this site and students.json
   editPref: false,  // the signed-in student wants edit controls
+  homeView: 'list', // overview layout: 'list' or 'cards' (remembered per device)
   edit: false,      // edit controls visible (editPref and allowed to edit the open student)
   cal: { view: 'month', cursor: ymd(new Date()), project: 'all', day: ymd(new Date()), past: false },
   statuses: new Map(),
@@ -80,10 +81,11 @@ function normalizeRegistry(r) {
   const reg = r && typeof r === 'object' ? r : {};
   reg.meta = { title: 'Research Progress', subtitle: '', admins: [], ...(reg.meta || {}) };
   reg.meta.admins = Array.isArray(reg.meta.admins) ? reg.meta.admins.map(String) : [];
+  reg.meta.grades = Array.isArray(reg.meta.grades) && reg.meta.grades.length ? reg.meta.grades.map(String) : DEFAULT_GRADES;
   reg.meta.comments = { url: '', key: '', ...(reg.meta.comments || {}) };
   const seen = new Set();
   reg.students = (Array.isArray(reg.students) ? reg.students : []).filter((st) => st && typeof st === 'object').map((st) => {
-    const e = { ...st, name: String(st.name || st.id || 'Student'), github: String(st.github || '') };
+    const e = { ...st, name: String(st.name || st.id || 'Student'), github: String(st.github || ''), grade: String(st.grade || '').trim() };
     e.id = slug(st.id || e.name);
     while (seen.has(e.id)) e.id = `${e.id}-2`;
     seen.add(e.id);
@@ -391,6 +393,7 @@ async function saveRegistry(change, message) {
   catch (e) { if (e.status !== 404) throw e; reg = JSON.parse(JSON.stringify(state.registry)); }
   reg = normalizeRegistry(reg);
   change(reg);
+  for (const st of reg.students) if (!st.grade) delete st.grade;
   await ghPut(t, `${JSON.stringify(reg, null, 2)}\n`, sha, message);
   setRegistry(reg);
 }
@@ -922,87 +925,131 @@ function viewReport(scope) {
 }
 
 // ---- all students (overview)
-// One student's headline numbers, computed from their own data.
+// Built for a supervisor skimming the whole group: what each student is working
+// on, how far along each project is, what's next, who is away this week and how
+// recently they updated. Students are grouped by grade.
+const DEFAULT_GRADES = ['D3', 'D2', 'D1', 'M2', 'M1', 'B4'];
+const STALE_DAYS = [7, 14]; // updated longer ago → orange, then red
+
 function summarize(rec, now = new Date()) {
   const d = rec.data; const sts = computeStatuses(now, d);
-  const ongoing = d.projects.filter((p) => isResearch(p) && p.status === 'ongoing');
-  let done = 0; let counted = 0; let overdue = 0; let soon = 0; let next = null;
-  const in7 = addDays(now, 7);
-  for (const p of d.projects) {
+  const today0 = startOfDay(now); const in7 = addDays(today0, 7);
+  const projects = byColor(d.projects).filter((p) => isResearch(p) && p.status === 'ongoing').map((p) => {
+    let done = 0; let counted = 0;
+    for (const s of p.stages) { const st = sts.get(s.id); if (st === 'done') done++; if (st !== 'failed') counted++; }
+    return { p, done, counted, pct: counted ? Math.round((done / counted) * 100) : 0 };
+  });
+  let next = null;
+  for (const { p } of projects) {
     for (const s of p.stages) {
       const st = sts.get(s.id);
-      if (st === 'overdue') overdue++;
-      const r = stageRange(s);
-      if (st !== 'off' && r && !s.outcome && r.end >= now && r.start <= in7 && (!isResearch(p) || p.status === 'ongoing')) soon++;
-      if (ongoing.includes(p)) {
-        if (st === 'done') done++;
-        if (st !== 'failed') counted++;
-        if ((st === 'upcoming' || st === 'inprogress') && (!next || r.start < next.r.start)) next = { p, s, st, r };
-      }
+      if (st === 'upcoming' || st === 'inprogress') { const r = stageRange(s); if (!next || r.start < next.r.start) next = { p, s, st, r }; }
     }
   }
-  return { ongoing: ongoing.length, done, counted, overdue, soon, next, pct: counted ? Math.round((done / counted) * 100) : 0 };
+  const away = d.projects.filter(isLeave).flatMap((p) => p.stages).map((s) => ({ s, r: stageRange(s) }))
+    .filter((x) => x.r && x.r.end >= today0 && x.r.start < in7).sort((a, b) => a.r.start - b.r.start);
+  return { projects, next, away };
+}
+
+// How fresh the student's last publish is: '' (recent), 'stale' (≥ 1 week), 'old' (≥ 2 weeks).
+function freshness(rec) {
+  const u = rec.data?.meta.updated;
+  if (!u) return { cls: 'old', text: 'Not updated yet' };
+  const days = (Date.now() - new Date(u)) / 864e5;
+  return { cls: days >= STALE_DAYS[1] ? 'old' : days >= STALE_DAYS[0] ? 'stale' : '', text: `Updated ${relTime(u)}` };
 }
 
 const initials = (name) => String(name).trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
 const avatarColor = (id) => COLORS[[...String(id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % COLORS.length];
 function relTime(iso) {
-  if (!iso) return '';
   const mins = Math.round((Date.now() - new Date(iso)) / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins} min ago`;
   if (mins < 60 * 24) return `${Math.round(mins / 60)} h ago`;
   const days = Math.round(mins / 1440);
-  return days < 30 ? `${days} day${days > 1 ? 's' : ''} ago` : fmt(new Date(iso), { day: 'numeric', month: 'short', year: 'numeric' });
+  return days < 30 ? `${days} day${days > 1 ? 's' : ''} ago` : `on ${fmt(new Date(iso), { day: 'numeric', month: 'short', year: 'numeric' })}`;
+}
+const fmtAway = (x) => (x.s.endDate && x.s.endDate > x.s.date ? `${fmtShort(x.r.start)}–${fmtShort(x.r.end)}` : fmt(x.r.start, { weekday: 'short', day: 'numeric', month: 'short' }));
+
+// Grade groups in the order set in students.json (meta.grades); unknown grades
+// follow alphabetically, students without a grade come last.
+function gradeGroups(recs) {
+  const order = state.registry.meta.grades;
+  const key = (g) => { const i = order.findIndex((x) => sameUser(x, g)); return i >= 0 ? i : g ? order.length : order.length + 1; };
+  const sorted = [...recs].sort((a, b) => key(a.entry.grade) - key(b.entry.grade) || String(a.entry.grade).localeCompare(String(b.entry.grade)) || a.entry.name.localeCompare(b.entry.name));
+  const groups = [];
+  for (const r of sorted) {
+    const g = r.entry.grade || '';
+    if (!groups.length || !sameUser(groups.at(-1).grade || '-', g || '-')) groups.push({ grade: g, recs: [] });
+    groups.at(-1).recs.push(r);
+  }
+  return groups;
+}
+
+const avatar = (e, cls = '') => `<span class="avatar ${cls}" style="--av:${avatarColor(e.id)}" aria-hidden="true">${esc(initials(e.name))}</span>`;
+const projLine = (x) => `<div class="sp" title="${esc(`${x.p.title} · ${x.done}/${x.counted} stages done`)}"><span class="sp-name"><i style="background:${esc(x.p.color)}"></i>${esc(x.p.title)}</span>
+  <span class="pbar sm"><span class="seg-done" style="width:${x.pct}%"></span></span><b>${x.pct}%</b></div>`;
+const nextLine = (m) => (m.next ? `<div class="sr-next tinted st-${m.next.st}"><span>${STATUS[m.next.st].icon}</span><span><b>${esc(m.next.s.name)}</b> · ${esc(fmtWhen(m.next.s).replace(/ · All day$/, ''))}</span></div>` : '<div class="muted small">Nothing scheduled</div>');
+const awayLine = (m) => (m.away.length ? `<div class="sr-away">🏖 Away ${m.away.slice(0, 2).map((x) => esc(fmtAway(x))).join(', ')}${m.away.length > 2 ? ' …' : ''}</div>` : '');
+
+function studentRow(rec) {
+  const e = rec.entry; const f = freshness(rec);
+  const who = `<div class="sr-who">${avatar(e, 'sm')}<div class="sc-name"><b>${esc(e.name)}</b>${canEdit(rec) ? ' <span class="pill you">You</span>' : ''}<div class="muted small">${esc(rec.data?.meta.subtitle || '')}</div></div></div>`;
+  let body;
+  if (rec.error) body = `<div class="sr-body muted small">Could not load (${esc(rec.error)})</div>`;
+  else if (!rec.data) body = '<div class="sr-body muted small">Loading…</div>';
+  else {
+    const m = summarize(rec);
+    body = `<div class="sr-projects">${m.projects.length ? m.projects.map(projLine).join('') : '<div class="muted small">No ongoing projects</div>'}</div>
+      <div class="sr-now">${nextLine(m)}${awayLine(m)}</div>
+      <div class="sr-upd fresh ${f.cls}">${esc(f.text)}</div>`;
+  }
+  return `<a class="srow student-item" href="${href('', rec)}" data-name="${esc(`${e.name} ${e.github} ${e.grade || ''}`.toLowerCase())}">${who}${body}</a>`;
 }
 
 function studentCard(rec) {
-  const e = rec.entry; const mine = canEdit(rec);
-  const head = `<div class="sc-head"><span class="avatar" style="--av:${avatarColor(e.id)}" aria-hidden="true">${esc(initials(e.name))}</span>
-    <div class="sc-name"><h3>${esc(e.name)}</h3><div class="muted small">${esc(rec.data?.meta.subtitle || (e.github ? `@${e.github}` : ''))}</div></div>
-    ${mine ? '<span class="pill you">You</span>' : ''}</div>`;
+  const e = rec.entry; const f = freshness(rec);
+  const head = `<div class="sc-head">${avatar(e)}
+    <div class="sc-name"><h3>${esc(e.name)}</h3><div class="muted small">${esc([e.grade, rec.data?.meta.subtitle].filter(Boolean).join(' · '))}</div></div>
+    ${canEdit(rec) ? '<span class="pill you">You</span>' : ''}</div>`;
   let body;
   if (rec.error) body = `<p class="muted small">Could not load (${esc(rec.error)}).</p>`;
   else if (!rec.data) body = '<p class="muted small">Loading…</p>';
   else {
     const m = summarize(rec);
-    const c = { done: m.done, counted: m.counted, overdue: 0, pct: m.pct };
     body = `<div class="pc-foot">
-      ${m.ongoing ? `${pbar(c)}<div class="pc-meta"><span><b>${m.done}/${m.counted}</b> stages done · ${m.ongoing} ongoing project${m.ongoing > 1 ? 's' : ''}</span><b>${m.pct}%</b></div>` : '<div class="muted small">No ongoing projects.</div>'}
-      <div class="sc-tags">
-        <span class="pill">${m.soon} task${m.soon === 1 ? '' : 's'} in the next 7 days</span>
-        ${m.overdue ? `<span class="pill warn">${m.overdue} awaiting update</span>` : ''}
-      </div>
-      ${m.next ? `<div class="next-chip tinted st-${m.next.st}"><span>${STATUS[m.next.st].icon}</span><div><div class="t">${esc(m.next.s.name)}</div><div>${esc(m.next.p.title)} · ${esc(fmtWhen(m.next.s))}</div></div></div>` : ''}
-      ${rec.data.meta.updated ? `<div class="muted small">Updated ${esc(relTime(rec.data.meta.updated))}</div>` : ''}
+      <div class="sr-projects">${m.projects.length ? m.projects.map(projLine).join('') : '<div class="muted small">No ongoing projects</div>'}</div>
+      ${nextLine(m)}${awayLine(m)}
+      <div class="fresh ${f.cls} small">${esc(f.text)}</div>
     </div>`;
   }
-  return `<a class="card project-card student-card" href="${href('', rec)}" data-name="${esc(`${e.name} ${e.github}`.toLowerCase())}" style="--pc:${avatarColor(e.id)}">${head}${body}</a>`;
+  return `<a class="card project-card student-card student-item" href="${href('', rec)}" data-name="${esc(`${e.name} ${e.github} ${e.grade || ''}`.toLowerCase())}" style="--pc:${avatarColor(e.id)}">${head}${body}</a>`;
 }
 
 function viewHome() {
   const { meta } = state.registry;
   const recs = [...state.students.values()];
-  const loaded = recs.filter((r) => r.data);
-  const sums = loaded.map((r) => summarize(r));
-  const total = (k) => sums.reduce((a, m) => a + m[k], 0);
-  const me = myRecord();
+  const cards = state.homeView === 'cards';
+  const groups = gradeGroups(recs);
+  const showHeads = groups.length > 1 || !!groups[0]?.grade;
   return `
     <div class="page-head">
       <div><h1>${esc(meta.title)}</h1>${meta.subtitle ? `<div class="sub">${esc(meta.subtitle)}</div>` : ''}</div>
     </div>
-    <div class="stats">
-      <div class="card stat"><div class="k">Students</div><div class="v">${recs.length}</div></div>
-      <div class="card stat"><div class="k">Ongoing projects</div><div class="v">${total('ongoing')}</div></div>
-      <div class="card stat ${total('overdue') ? 'warn' : ''}"><div class="k">Awaiting update</div><div class="v">${total('overdue')}</div></div>
+    <div class="home-bar">
+      ${recs.length > 4 ? '<input type="text" class="filter" data-input="student-filter" placeholder="Search students…" aria-label="Search students">' : '<span class="spacer"></span>'}
+      <div class="seg" role="group" aria-label="Layout">${[['list', '☰ List'], ['cards', '▦ Cards']].map(([k, l]) => `<button data-act="home-view" data-v="${k}" class="${state.homeView === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      ${isAdmin() ? '<button class="btn sm" data-act="roster">👥 Manage</button>' : ''}
     </div>
-    ${me ? `<a class="card archive-link my-link" href="${href('', me)}"><span class="avatar" style="--av:${avatarColor(me.entry.id)}" aria-hidden="true">${esc(initials(me.entry.name))}</span><span><b>Go to my dashboard</b><br><span class="muted small">Signed in as @${esc(state.auth.login)} · you can edit your own progress</span></span><span class="spacer"></span><span aria-hidden="true">›</span></a>` : ''}
-    <div class="section-title">All students <span class="count">${recs.length}</span><span class="spacer"></span>
-      ${isAdmin() ? '<button class="btn sm" data-act="roster" style="text-transform:none;letter-spacing:0">👥 Manage students</button>' : ''}</div>
-    ${recs.length > 4 ? '<input type="text" class="filter" data-input="student-filter" placeholder="Search students…" aria-label="Search students">' : ''}
-    ${recs.length ? `<div class="projects students">${recs.map(studentCard).join('')}</div>`
-      : `<div class="card empty">No students yet.${isAdmin() ? '<br><button class="btn primary" data-act="add-student">＋ Add a student</button>' : ' An admin adds students to <code>students.json</code>.'}</div>`}
-    <p class="muted small" style="margin-top:18px">Tap a student to see their projects, stages and calendar. Everyone can view; each student can only edit their own dashboard.</p>`;
+    ${!recs.length ? '' : cards
+      // Cards flow in one grid (sorted by grade, shown on each card) so small grades don't leave gaps.
+      ? `<div class="projects students" style="margin-top:14px">${groups.flatMap((g) => g.recs).map(studentCard).join('')}</div>`
+      : groups.map((g) => `<section class="grade-group">
+        ${showHeads ? `<div class="section-title">${esc(g.grade || 'Other members')} <span class="count">${g.recs.length}</span></div>` : ''}
+        <div class="slist">${g.recs.map(studentRow).join('')}</div>
+      </section>`).join('')}
+    ${recs.length ? '' : `<div class="card empty">No students yet.${isAdmin() ? '<br><button class="btn primary" data-act="add-student">＋ Add a student</button>' : ' An admin adds students to <code>students.json</code>.'}</div>`}
+    <div class="legend fresh-legend"><span class="fresh">Updated in the last week</span><span class="fresh stale">1–2 weeks ago</span><span class="fresh old">Over 2 weeks ago</span></div>`;
 }
 
 // ---------------------------------------------------------------- main render
@@ -1022,6 +1069,8 @@ function renderChrome(route) {
     <button type="button" data-act="export"><span class="tab-ico" aria-hidden="true">⇪</span><span>Export</span></button>`}`;
 
   let actions = '<button class="btn sm" data-act="share" aria-label="Share visitor link">🔗<span class="lbl-long"> Share</span></button>';
+  const me = home && myRecord();
+  if (me) actions = `<a class="btn sm" href="${href('', me)}">${avatar(me.entry, 'xs')}<span class="lbl-long"> My page</span></a>${actions}`;
   if (!home && canEdit()) {
     if (state.dirty) actions += '<button class="btn sm primary pulse" data-act="publish">⬆ Publish</button>';
     actions += state.edit
@@ -1106,7 +1155,8 @@ function render() {
 
 function filterStudents(q) {
   const t = q.trim().toLowerCase();
-  $$('.student-card').forEach((c) => c.classList.toggle('hidden', !!t && !c.dataset.name.includes(t)));
+  $$('.student-item').forEach((c) => c.classList.toggle('hidden', !!t && !c.dataset.name.includes(t)));
+  $$('.grade-group').forEach((g) => g.classList.toggle('hidden', !$('.student-item:not(.hidden)', g)));
 }
 
 // ---------------------------------------------------------------- modal / toast
@@ -1606,13 +1656,13 @@ async function refreshRegistry() {
 }
 
 function openRoster() {
-  const list = state.registry.students;
+  const list = gradeGroups([...state.students.values()]).flatMap((g) => g.recs.map((r) => r.entry));
   openModal({
     title: 'Manage students',
     body: `<p class="muted small" style="margin-top:0">Each student signs in with their own GitHub account and can only edit their own dashboard. Changes here are committed to <code>${REGISTRY}</code> right away.</p>
       <div class="mini-list">${list.map((e) => `<div class="mini st-planned" style="cursor:auto">
         <span class="avatar sm" style="--av:${avatarColor(e.id)}" aria-hidden="true">${esc(initials(e.name))}</span>
-        <div class="body"><div class="t">${esc(e.name)}</div><div class="s">@${esc(e.github || '—')} · ${esc(e.repo ? `${e.repo}/${e.path || 'data.json'}` : e.path || `students/${e.id}.json`)}</div></div>
+        <div class="body"><div class="t">${esc(e.name)}${e.grade ? ` <span class="pill">${esc(e.grade)}</span>` : ''}</div><div class="s">@${esc(e.github || '—')} · ${esc(e.repo ? `${e.repo}/${e.path || 'data.json'}` : e.path || `students/${e.id}.json`)}</div></div>
         <div class="acts"><button class="btn sm" data-act="edit-student" data-id="${esc(e.id)}">✎ Edit</button></div></div>`).join('') || '<p class="muted small">No students yet.</p>'}</div>`,
     footer: '<button class="btn" data-close>Close</button><button class="btn primary" data-act="add-student">＋ Add student</button>',
   });
@@ -1625,7 +1675,11 @@ function openStudentForm(id) {
     title: e ? 'Edit student' : 'Add student',
     body: `<form id="stu-form" autocomplete="off">
       <label class="field"><span>Name</span><input type="text" name="name" required value="${esc(e?.name || '')}" placeholder="e.g. Purin"></label>
-      <label class="field"><span>GitHub username</span><input type="text" name="github" required value="${esc(e?.github || '')}" placeholder="e.g. octocat" autocapitalize="off" spellcheck="false"></label>
+      <div class="grid2">
+        <label class="field"><span>Grade</span><input type="text" name="grade" list="grade-list" value="${esc(e?.grade || '')}" placeholder="e.g. D2, M1" autocapitalize="characters" spellcheck="false">
+          <datalist id="grade-list">${state.registry.meta.grades.map((g) => `<option value="${esc(g)}">`).join('')}</datalist></label>
+        <label class="field"><span>GitHub username</span><input type="text" name="github" required value="${esc(e?.github || '')}" placeholder="e.g. octocat" autocapitalize="off" spellcheck="false"></label>
+      </div>
       <p class="help">Only this GitHub account can edit the student's dashboard.</p>
       <label class="field"><span>Page address</span><input type="text" name="id" value="${esc(e?.id || '')}" placeholder="made from the name" autocapitalize="off" spellcheck="false" ${e ? 'disabled' : ''}></label>
       <p class="help">The link is <code>#/s/<i>address</i></code>.${e ? ' It can’t be changed once created.' : ''}</p>
@@ -1660,7 +1714,7 @@ function openStudentForm(id) {
       form.addEventListener('submit', (ev) => {
         ev.preventDefault();
         const fd = new FormData(form);
-        const v = { name: fd.get('name').trim(), github: fd.get('github').trim().replace(/^@/, '') };
+        const v = { name: fd.get('name').trim(), grade: fd.get('grade').trim(), github: fd.get('github').trim().replace(/^@/, '') };
         if (fd.get('where') === 'own') {
           const repo = fd.get('repo').trim().replace(/^https:\/\/github\.com\//, '').replace(/\/+$/, '');
           if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { toast('Repository should look like owner/name'); form.repo.focus(); return; }
@@ -1671,7 +1725,8 @@ function openStudentForm(id) {
         save((reg) => {
           const i = reg.students.findIndex((x) => x.id === sid);
           const entry = { id: sid, ...v };
-          if (i >= 0) { const { repo, branch, path, ...rest } = reg.students[i]; reg.students[i] = { ...rest, ...entry }; }
+          if (!entry.grade) delete entry.grade;
+          if (i >= 0) { const { repo, branch, path, grade, ...rest } = reg.students[i]; reg.students[i] = { ...rest, ...entry }; }
           else reg.students.push(entry);
         }, `${e ? 'Update' : 'Add'} student: ${v.name}`, e ? 'Student saved ✓' : `${v.name} added ✓  Visitors will see them within a minute or two.`);
       });
@@ -1723,6 +1778,7 @@ const actions = {
   signin() { openSignIn(); },
   account() { closeModal(); openAccount(); },
   roster() { openRoster(); },
+  'home-view'(el) { state.homeView = el.dataset.v; store.set(KEY.home, state.homeView); render(); },
   'add-student'() { closeModal(); openStudentForm(); },
   'edit-student'(el) { closeModal(); openStudentForm(el.dataset.id); },
   'toggle-edit'() { state.editPref = !state.edit; store.set(KEY.edit, state.editPref); render(); },
@@ -1856,6 +1912,7 @@ async function boot() {
   state.auth = { token: '', login: '', ...(store.get(KEY.auth) || {}) };
   state.hub = { ...state.hub, ...detectRepo(), ...(store.get(KEY.hub) || {}) };
   state.editPref = !!store.get(KEY.edit, false);
+  state.homeView = store.get(KEY.home) === 'cards' ? 'cards' : 'list';
   state.cal = { ...state.cal, ...(store.get(KEY.cal) || {}) };
 
   try {

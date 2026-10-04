@@ -419,7 +419,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .sc-tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .pill.warn { background: var(--due-bg); color: var(--due-ink); }
 .pill.you { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent); flex: none; }
-.my-link { margin-top: 14px; }
 input.filter { margin-bottom: 12px; }
 details.adv { margin-top: 6px; border-top: 1px solid var(--border); padding-top: 10px; }
 details.adv summary { cursor: pointer; font-weight: 600; font-size: .85rem; color: var(--muted); }
@@ -427,3 +426,42 @@ details.adv summary { cursor: pointer; font-weight: 600; font-size: .85rem; colo
 /* The overview has no student tabs; the brand links back to it. */
 body.no-tabs .tabs { display: none; }
 @media (max-width: 720px) { body.no-tabs { --tabbar-h: 0px; } }
+
+/* Overview toolbar, grade groups and the compact list */
+.home-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.home-bar .filter { flex: 1; margin: 0; min-width: 0; }
+.grade-group .section-title { margin-top: 18px; }
+.slist { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.srow {
+  display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(0, 2fr) minmax(0, 1.6fr) 150px; gap: 14px; align-items: center;
+  padding: 10px 14px; color: var(--text); border-top: 1px solid var(--border);
+}
+.srow:first-child { border-top: 0; }
+.srow:hover { background: var(--surface-2); }
+.sr-who { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.sr-projects { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sp { display: grid; grid-template-columns: minmax(0, 1fr) 70px 36px; gap: 8px; align-items: center; font-size: .82rem; }
+.sp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-name i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+.sp b { text-align: right; font-variant-numeric: tabular-nums; }
+.pbar.sm { height: 6px; }
+.sr-now { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sr-next { display: flex; gap: 6px; font-size: .8rem; padding: 4px 8px; border-radius: 8px; min-width: 0; }
+.sr-next > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-away { font-size: .78rem; color: var(--muted); }
+.sr-upd { font-size: .78rem; text-align: right; }
+.fresh { color: var(--muted); }
+.fresh.stale { color: var(--due-ink); font-weight: 600; }
+.fresh.old { color: var(--fail-ink); font-weight: 600; }
+.fresh-legend { margin-top: 16px; }
+.fresh-legend .fresh::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--plan); }
+.fresh-legend .fresh.stale::before { background: var(--due); }
+.fresh-legend .fresh.old::before { background: var(--fail); }
+.avatar.xs { width: 20px; height: 20px; font-size: .55rem; }
+@media (max-width: 860px) {
+  .srow { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; }
+  .sr-who { grid-column: 1; }
+  .sr-upd { grid-column: 2; grid-row: 1; }
+  .sr-projects, .sr-now { grid-column: 1 / -1; }
+  .sr-who .small { display: none; }
+}
