@@ -428,9 +428,11 @@ body.no-tabs .tabs { display: none; }
 @media (max-width: 720px) { body.no-tabs { --tabbar-h: 0px; } }
 
 /* Overview toolbar, grade groups and the compact list */
-.home-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
-.home-bar .filter { flex: 1; margin: 0; min-width: 0; }
-.grade-group .section-title { margin-top: 18px; }
+.home-search { margin: 0 0 10px; }
+.home-search .filter { margin: 0; }
+input[type=search] { width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; -webkit-appearance: none; appearance: none; }
+.home-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.grade { font-size: .78rem; font-weight: 700; color: var(--muted); background: var(--surface-2); border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; letter-spacing: .02em; }
 .slist { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 .srow {
   display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(0, 2fr) minmax(0, 1.6fr) 150px; gap: 14px; align-items: center;
