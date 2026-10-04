@@ -2,13 +2,24 @@
   "meta": {
     "title": "Research Progress",
     "subtitle": "Everyone's projects, stages and schedule",
-    "admins": ["purin1999"],
+    "admins": [
+      "purin1999"
+    ],
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
     }
   },
   "students": [
-    { "id": "purin", "name": "Purin", "github": "purin1999" }
+    {
+      "id": "purin",
+      "name": "Purin",
+      "github": "purin1999"
+    },
+    {
+      "id": "mob-account",
+      "name": "Mob account",
+      "github": "purin1999"
+    }
   ]
 }
