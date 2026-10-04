@@ -1,13 +1,20 @@
 # Research Progress Dashboard
 
-A dashboard for tracking research progress. It's a static web app that needs no server or build step. It is
-hosted free on GitHub Pages and designed for iPhone, and visitors can look but not edit.
+A dashboard for tracking the research progress of a group of students. It's a static web app that needs no server
+or build step. It is hosted free on GitHub Pages and designed for iPhone. Everyone can look at every student's
+progress, and **each student can only edit their own**.
 
-- **Live dashboard (view only):** <https://purin1999.github.io/Research-dashboard/>
-- **Edit mode (owner):** <https://purin1999.github.io/Research-dashboard/?admin>
+- **All students (view only):** <https://purin1999.github.io/Research-dashboard/>
+- **One student's dashboard:** `https://purin1999.github.io/Research-dashboard/#/s/<student>`, e.g.
+  <https://purin1999.github.io/Research-dashboard/#/s/purin>
+- **Sign in to edit your own dashboard:** <https://purin1999.github.io/Research-dashboard/?admin> (or *Student sign-in*
+  at the bottom of any page)
 - **Repository:** <https://github.com/purin1999/Research-dashboard>
 
-- **Dashboard**: every ongoing project with a progress bar, what's next, and what still needs an update.
+- **All students** (home page): one card per student with their overall progress across ongoing projects, tasks in the
+  next 7 days, stages awaiting an update and what's up next. Tap a card to open that student's dashboard.
+
+- **Dashboard** (per student): every ongoing project with a progress bar, what's next, and what still needs an update.
 - **Project page**: tap a project to see its stages. Each stage has an action name, experiment conditions
   (Condition 1, 2, 3, …), a schedule, notes and a comment.
 - **Calendar**: Month, Week (3 days on phone, 7 on desktop, with a time grid like Google Calendar) and List views,
@@ -31,49 +38,93 @@ hosted free on GitHub Pages and designed for iPhone, and visitors can look but n
 - **Archive tab**: projects set to *Paused* or *Completed* move off the dashboard into the Archive tab.
 - **Pinned event + visitor comments**: a special event can be shown at the top of the dashboard (last 2 entries and
   the next one) and can allow visitors to comment on each entry ("Comments from members", name optional).
-- **🔗 Share**: copies or shares the view-only link (without `?admin`).
+- **🔗 Share**: copies or shares the view-only link to the page you're on (the student's dashboard, or all students).
 - **Export** (⇪ tab): a printable report you can save as PDF, a spreadsheet (`.csv`), a calendar file (`.ics` for
   Google or Apple Calendar) and a full data backup (`.json`). You can export one project or everything.
 
 ## How it works
 
 ```
-index.html          app shell
-assets/app.js       all logic (no dependencies)
-assets/styles.css   styles (light + dark mode, iPhone layout)
-data.json           YOUR DATA: what visitors see
+index.html            app shell
+assets/app.js         all logic (no dependencies)
+assets/styles.css     styles (light + dark mode, iPhone layout)
+students.json         THE STUDENT LIST: who is in the group, and the admins
+students/<id>.json    each student's data: what visitors see
 ```
 
-Visitors load `data.json` and can only view it. When you edit on your own device and tap **Publish**, the app
-commits the new `data.json` to this repository through the GitHub API. GitHub Pages then updates the public
-site within about a minute.
+`students.json` looks like this:
 
-## One-time setup
+```json
+{
+  "meta": { "title": "Research Progress", "subtitle": "…", "admins": ["purin1999"] },
+  "students": [
+    { "id": "purin", "name": "Purin", "github": "purin1999" },
+    { "id": "alice", "name": "Alice", "github": "alice-gh", "repo": "alice-gh/research-data" }
+  ]
+}
+```
+
+- `id` is the page address (`#/s/purin`) and, by default, the data file name (`students/purin.json`).
+- `github` is the **only** GitHub account allowed to edit that student's dashboard.
+- `repo` (optional, with optional `branch` and `path`, default `main` and `data.json`) keeps the student's data in
+  their own public repository instead of this one.
+- `admins` can add, edit and remove students from inside the app (**👥 Manage students** on the home page). Admins
+  can't edit other students' progress.
+
+Visitors load the JSON files and can only view them. A student signs in with a GitHub token; the app asks GitHub
+whose token it is and unlocks editing only on the dashboard whose `github` matches. When they tap **Publish**, the
+app commits their own data file through the GitHub API, and GitHub Pages updates the public site within about a
+minute.
+
+### Who can edit what
+
+| Data stored in | Who can technically write it | Who the app lets edit it |
+| --- | --- | --- |
+| this repository (`students/<id>.json`, default) | every collaborator of this repository | only the matching student |
+| the student's own repository (`repo`) | only that student (GitHub enforces it) | only the matching student |
+
+The default is the easiest to set up, and every commit shows who made it, so it suits a lab where everyone trusts
+each other. If you need students to be *unable* to change each other's files, put each student's data in their own
+repository.
+
+## One-time setup (admin)
 
 1. **Turn on GitHub Pages**: go to *Settings → Pages → Build and deployment*, choose *Deploy from a branch*, pick
    branch `main` and folder `/ (root)`, then save. The site will be at
    <https://purin1999.github.io/Research-dashboard/>.
    (GitHub Pages on a free account needs a **public** repository.)
-2. **Create an access token** for publishing:
-   <https://github.com/settings/personal-access-tokens/new>
-   - *Repository access*: **Only select repositories**, then pick `purin1999/Research-dashboard`
+2. Put your own GitHub username in `admins` in `students.json`, then sign in on the site (see below).
+3. **Add each student**: on the home page tap **👥 Manage students → ＋ Add student**, and enter their name and GitHub
+   username. Then either
+   - *Data in this repository* (default): invite them under *Settings → Collaborators* so they can publish, or
+   - *Data in their own repository*: they create a **public** repository (it can be empty) and you enter it as
+     `owner/name`. No access to this repository is needed.
+
+## Student setup (each student, once per device)
+
+1. **Create an access token**: <https://github.com/settings/personal-access-tokens/new>
+   - *Repository access*: **Only select repositories**, then pick the repository that holds your data
+     (`purin1999/Research-dashboard`, or your own one)
    - *Permissions → Repository permissions → Contents*: **Read and write**
-3. **Open the site in edit mode on your iPhone**: <https://purin1999.github.io/Research-dashboard/?admin>
-   - Tap **✎ Edit**, then **⚙︎** (Settings), paste the token and check the fields read user `purin1999`,
-     repository `Research-dashboard`, branch `main`, then Save.
-   - In Safari, tap **Share → Add to Home Screen** so the dashboard opens like an app. The Home Screen app
-     keeps its own storage, so the first time you open it, tap **Owner sign-in** at the bottom of the page
-     and paste your token.
+2. **Sign in on your iPhone**: open <https://purin1999.github.io/Research-dashboard/?admin> (or tap *Student sign-in* at
+   the bottom of any page), paste the token and tap **Sign in**. The app takes you to your dashboard with editing
+   turned on. Everyone else's dashboards stay view-only for you.
+   - In Safari, tap **Share → Add to Home Screen** so the dashboard opens like an app. The Home Screen app keeps its
+     own storage, so sign in there once too.
    - Do the same on any other device you want to edit from.
-4. **Share the plain address**, <https://purin1999.github.io/Research-dashboard/> (without `?admin`), with anyone who wants to follow your progress. They can
-   only view.
+3. **Share the plain address**, <https://purin1999.github.io/Research-dashboard/#/s/your-id> (without `?admin`), with
+   anyone who wants to follow your progress. They can only view.
 
 > The token is stored only in your own browser (localStorage) and is sent only to `api.github.com`.
-> Use **Settings → Forget token** or *Stop editing on this device* on shared computers.
+> Use **Account → Sign out on this device** on shared computers.
+
+> **Upgrading from the single-user version:** `data.json` moved to `students/purin.json`. Devices that were set up
+> before keep working: the saved token and any unpublished draft move over to your dashboard automatically. Old links
+> such as `#/project/<id>` open the first student's page.
 
 ## Everyday use
 
-1. **✎ Edit**, then **＋ New project** / **＋ Add stage**. Add as many conditions as you need.
+1. On your own dashboard, **✎ Edit**, then **＋ New project** / **＋ Add stage**. Add as many conditions as you need.
 2. Give each stage a date and optionally a time range or an end date (for multi-day stages). In the week view you
    can also tap an empty time slot to create a stage there.
 3. After the planned date passes, the stage turns **orange** and appears under *Needs your update* on the
@@ -88,10 +139,12 @@ record, and the repeat you schedule is what counts toward progress.
 
 ```bash
 python3 -m http.server 8000
-# open http://localhost:8000/?admin
+# open http://localhost:8000/
 ```
 
-Opening `index.html` directly from disk won't work, because the browser blocks loading `data.json` from a `file://` page.
+On `localhost` the app can't guess the repository, so fill in *Site repository* in the sign-in dialog.
+
+Opening `index.html` directly from disk won't work, because the browser blocks loading the JSON files from a `file://` page.
 
 ## Visitor comments (one-time setup, about 5 minutes)
 
@@ -119,7 +172,9 @@ anything visitors write.
    ```
 3. Open **Project Settings → API** (or *Connect*). Copy the **Project URL** and the **publishable** (or `anon`
    public) key.
-4. In the dashboard: **✎ Edit → ⚙︎ → Visitor comments**. Paste both values, tap **Save**, then **⬆ Publish**.
+4. In your dashboard: **✎ Edit → ⚙︎ → Visitor comments**. Paste both values, tap **Save**, then **⬆ Publish**.
+   To share one Supabase project with the whole group instead, an admin puts the same two values in
+   `meta.comments` in `students.json`; students who leave their own fields empty use it.
 5. On a special event (e.g. *Meeting*), **✎ Edit**, then tick **Allow visitor comments**.
 
 Visitors can only read and add comments, never edit or delete them. To moderate, tap **Hide** on a comment in edit
