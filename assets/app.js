@@ -27,7 +27,14 @@ const LEAVE_KINDS = {
   other:    { label: 'Day off',           icon: '🏖' },
 };
 const LEAVE_COLOR = '#ffffff';
-const KEY = { home: 'rpd.home', auth: 'rpd.auth', hub: 'rpd.hub', draft: 'rpd.draft', edit: 'rpd.edit', cal: 'rpd.cal', legacyGh: 'rpd.gh', legacyOwner: 'rpd.owner' };
+// Who can see a day off. The data files are public, so private details are
+// never published: they stay on the student's own device (see "private leave").
+const PRIVACY = {
+  '':     { label: 'Everyone sees the details' },
+  busy:   { label: 'Others only see that I’m away', short: '🔒 Details hidden from others' },
+  hidden: { label: 'Only me (not published at all)', short: '🙈 Only visible to you' },
+};
+const KEY = { private: 'rpd.private', home: 'rpd.home', auth: 'rpd.auth', hub: 'rpd.hub', draft: 'rpd.draft', edit: 'rpd.edit', cal: 'rpd.cal', legacyGh: 'rpd.gh', legacyOwner: 'rpd.owner' };
 const REGISTRY = 'students.json';
 
 // ---------------------------------------------------------------- utilities
@@ -153,6 +160,7 @@ function normalize(d) {
       if (!['done', 'failed'].includes(s.outcome)) s.outcome = null;
       s.comment ??= '';
       if (p.type === 'leave') { s.outcome = null; if (!LEAVE_KINDS[s.kind]) s.kind = 'other'; }
+      if (p.type === 'leave' && PRIVACY[s.privacy]) { if (!s.privacy) delete s.privacy; } else delete s.privacy;
     }
   }
   return data;
@@ -258,7 +266,48 @@ function fmtWhen(s) {
 
 // ---------------------------------------------------------------- persistence
 const draftKey = (rec) => `${KEY.draft}.${rec.entry.id}`;
-function saveDraft(rec = state.rec) { if (rec) store.set(draftKey(rec), { data: rec.data, sha: rec.sha, dirty: rec.dirty }); }
+function saveDraft(rec = state.rec) {
+  if (!rec) return;
+  store.set(draftKey(rec), { data: rec.data, sha: rec.sha, dirty: rec.dirty });
+  savePrivate(rec);
+}
+
+// ---- private leave
+// A day off marked "busy" is published with only its type and dates; one marked
+// "hidden" is not published at all. What others must not see is kept in this
+// device's storage and put back whenever the student's own data is loaded.
+const privateKey = (rec) => `${KEY.private}.${rec.entry.id}`;
+const privateStages = (data) => data.projects.filter(isLeave).flatMap((p) => p.stages.filter((s) => s.privacy).map((s) => ({ p, s })));
+function savePrivate(rec) {
+  if (!canEdit(rec) || !rec.data) return;
+  const out = {};
+  for (const { p, s } of privateStages(rec.data)) out[s.id] = s.privacy === 'hidden' ? { ...structuredClone(s), pid: p.id } : { privacy: 'busy', name: s.name, notes: s.notes };
+  if (Object.keys(out).length) store.set(privateKey(rec), out); else store.del(privateKey(rec));
+}
+function mergePrivate(rec, data) {
+  const saved = canEdit(rec) ? store.get(privateKey(rec)) : null;
+  if (!saved) return data;
+  const have = new Map(data.projects.flatMap((p) => p.stages.map((s) => [s.id, s])));
+  for (const [id, v] of Object.entries(saved)) {
+    const s = have.get(id);
+    if (v.privacy === 'busy') { if (s?.privacy === 'busy') Object.assign(s, { name: v.name, notes: v.notes }); continue; }
+    if (v.privacy !== 'hidden' || s) continue;
+    let p = data.projects.find((x) => x.id === v.pid && isLeave(x)) || data.projects.find(isLeave);
+    if (!p) { p = { id: v.pid || uid('p'), title: 'Holidays & leave', description: '', type: 'leave', status: 'ongoing', color: COLORS[7], stages: [] }; data.projects.push(p); }
+    const { pid, ...stage } = v;
+    p.stages.push(stage);
+  }
+  return normalize(data);
+}
+// The copy that goes online: busy days off lose their title and notes, hidden ones are left out.
+function publicCopy(data) {
+  const out = structuredClone(data);
+  for (const p of out.projects) for (const s of p.stages) if (!s.privacy) delete s.privacy;
+  for (const p of out.projects.filter(isLeave)) {
+    p.stages = p.stages.filter((s) => s.privacy !== 'hidden').map((s) => (s.privacy === 'busy' ? { ...s, name: (LEAVE_KINDS[s.kind] || LEAVE_KINDS.other).label, notes: '' } : s));
+  }
+  return out;
+}
 
 function commit(msg) {
   state.dirty = true;
@@ -290,7 +339,7 @@ function ensureLoaded(rec) {
     let data = null; let sha = null; let dirty = false; let error = '';
     try {
       if (draft?.dirty && draft.data) { data = normalize(draft.data); sha = draft.sha || null; dirty = true; }
-      else data = await fetchPublished(rec);
+      else data = mergePrivate(rec, await fetchPublished(rec));
     } catch (e) {
       if (draft?.data) { data = normalize(draft.data); sha = draft.sha || null; }
       else error = e.message;
@@ -343,7 +392,7 @@ async function loadFromGitHub(rec = state.rec, { quiet = false } = {}) {
   if (!ghReady(rec)) return false;
   try {
     const { data, sha } = await ghGet(target(rec));
-    rec.data = normalize(data); rec.sha = sha; rec.dirty = false;
+    rec.data = mergePrivate(rec, normalize(data)); rec.sha = sha; rec.dirty = false;
     saveDraft(rec); render();
     if (!quiet) toast('Loaded latest version from GitHub');
     return true;
@@ -362,7 +411,8 @@ async function publish() {
   if (btn) { btn.disabled = true; btn.textContent = 'Publishing…'; }
   const t = target(rec);
   rec.data.meta.updated = new Date().toISOString();
-  const text = `${JSON.stringify(rec.data, null, 2)}\n`;
+  savePrivate(rec);
+  const text = `${JSON.stringify(publicCopy(rec.data), null, 2)}\n`;
   const message = `Update research progress: ${rec.entry.name} (${new Date().toLocaleString(LOCALE)})`;
   try {
     if (!rec.sha) { try { rec.sha = (await ghGet(t)).sha; } catch (e) { if (e.status !== 404) throw e; } }
@@ -646,6 +696,9 @@ function leaveCard(p) {
     </div></a>`;
 }
 
+// Shown to the student only: who else can see this day off.
+const privacyNote = (s) => (s.privacy && canEdit() ? `<div class="privacy-note">${PRIVACY[s.privacy].short}</div>` : '');
+
 function stageCard(p, s, i, sorted = false) {
   const st = statusOf(s);
   const E = state.edit;
@@ -655,6 +708,7 @@ function stageCard(p, s, i, sorted = false) {
     <div class="stage-main">
       <div class="stage-top"><h3>${esc(s.name)}</h3>${badge(st, s)}</div>
       <div class="when">🗓 ${esc(fmtWhen(s))}</div>
+      ${privacyNote(s)}
       ${s.notes ? `<p class="notes">${esc(s.notes)}</p>` : ''}
       ${E ? `<div class="stage-actions"><button class="btn sm" data-act="edit-stage" data-id="${s.id}">✎ Edit</button><button class="btn sm danger" data-act="delete-stage" data-id="${s.id}">Delete</button></div>` : ''}
     </div></li>`;
@@ -1206,6 +1260,7 @@ function openStage(id) {
     body: `<div class="stack">
       <div class="row"><span class="mini" style="padding:0;background:none;border:0;cursor:auto"><span class="dot" style="background:${esc(projColor(p))}"></span></span><a href="${projHref(p.id)}" data-close-nav>${esc(p.title)}</a><span class="spacer"></span>${badge(st, s)}</div>
       <div class="when" style="font-size:.95rem">🗓 ${esc(fmtWhen(s))}</div>
+      ${privacyNote(s)}
       ${s.notes ? `<p class="notes">${esc(s.notes)}</p>` : ''}
       ${s.conditions.length ? `<div class="st-${st}"><ol class="conds">${s.conditions.map((c, k) => `<li><b>Condition ${k + 1}</b><span>${esc(c)}</span></li>`).join('')}</ol></div>` : isResearch(p) ? '<p class="muted small">No experiment conditions listed.</p>' : ''}
       ${s.comment ? `<div class="st-${st}"><div class="comment"><b>${s.outcome === 'failed' ? 'Why it did not go as planned' : 'Comment'}</b>${esc(s.comment)}</div></div>` : ''}
@@ -1384,6 +1439,8 @@ function openStageForm({ id, pid, date, start } = {}) {
     body: `<form id="st-form" autocomplete="off">
       <label class="field"><span>Project</span><select name="pid">${choices.map((p) => `<option value="${esc(p.id)}" ${p.id === projectId ? 'selected' : ''}>${esc(p.title)}</option>`).join('')}</select></label>
       <label class="field leave-only"><span>Type of day off</span><select name="kind">${Object.entries(LEAVE_KINDS).map(([k, v]) => `<option value="${k}" ${(s.kind || 'holiday') === k ? 'selected' : ''}>${v.icon} ${v.label}</option>`).join('')}</select></label>
+      <label class="field leave-only"><span>Who can see it</span><select name="privacy">${Object.entries(PRIVACY).map(([k, v]) => `<option value="${k}" ${(s.privacy || '') === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></label>
+      <p class="help leave-only" id="privacy-help"></p>
       <label class="field"><span id="name-label">Action name</span><input type="text" name="name" required value="${esc(s.name)}" placeholder="e.g. BMP batch test set-up"></label>
       <div class="field research-only"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Experiment conditions</span>
         <div id="conds">${conds.map(condRow).join('')}</div>
@@ -1420,6 +1477,14 @@ function openStageForm({ id, pid, date, start } = {}) {
         $('.modal-foot [type=submit]', m).textContent = found ? 'Save' : leave ? 'Add day off' : 'Add stage';
         $('.modal-head h2', m).textContent = found ? (leave ? 'Edit day off' : 'Edit stage') : (leave ? 'New day off' : 'New stage');
       };
+      const syncPrivacy = () => {
+        const v = form.privacy.value;
+        $('#privacy-help', m).textContent = v === 'busy'
+          ? `Others see “${(LEAVE_KINDS[form.kind.value] || LEAVE_KINDS.other).label}” and the dates only. The title and notes stay on this device and aren't published.`
+          : v === 'hidden' ? 'Not published at all: nobody else sees it, not even that you’re away. It stays on this device only.'
+          : 'Title, dates and notes are visible to everyone who opens the dashboard.';
+      };
+      form.privacy.addEventListener('change', syncPrivacy); form.kind.addEventListener('change', syncPrivacy); syncPrivacy();
       form.pid.addEventListener('change', syncType);
       syncType();
       form.allDay.addEventListener('change', () => { if (!form.allDay.checked && !form.start.value) { form.start.value = '09:00'; form.end.value = '12:00'; } syncTimes(); });
@@ -1438,7 +1503,8 @@ function openStageForm({ id, pid, date, start } = {}) {
           date, endDate: endDate === date ? '' : endDate, allDay, start: allDay ? '' : fd.get('start'), end: allDay ? '' : fd.get('end'),
         };
         const target = findProject(fd.get('pid'));
-        if (isLeave(target)) { next.conditions = []; next.kind = fd.get('kind'); next.outcome = null; next.comment = ''; }
+        if (isLeave(target)) { next.conditions = []; next.kind = fd.get('kind'); next.outcome = null; next.comment = ''; next.privacy = PRIVACY[fd.get('privacy')] ? fd.get('privacy') : ''; }
+        else next.privacy = '';
         if (found) {
           Object.assign(s, next);
           if (target.id !== found.p.id) { found.p.stages.splice(found.i, 1); target.stages.push(s); }
@@ -1796,7 +1862,7 @@ const actions = {
     if (!confirm('Discard all unpublished changes on this device?')) return;
     const rec = state.rec;
     store.del(draftKey(rec)); rec.dirty = false;
-    if (!(await loadFromGitHub(rec, { quiet: true }))) { rec.data = await fetchPublished(rec).catch(() => emptyData(rec)); rec.sha = null; render(); }
+    if (!(await loadFromGitHub(rec, { quiet: true }))) { rec.data = mergePrivate(rec, await fetchPublished(rec).catch(() => emptyData(rec))); rec.sha = null; render(); }
     toast('Changes discarded');
   },
   settings() { openSettings(); },

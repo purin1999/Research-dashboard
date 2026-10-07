@@ -32,6 +32,16 @@ progress, and **each student can only edit their own**.
     ask for a status update and don't count toward progress.
 - **Holiday & leave**: tap **＋ Day off** on the dashboard or the calendar. The first time, a "Holidays & leave"
   project is created for you, or you can choose *Type → Holiday & leave* when creating a project.
+- **Private days off**: each day off has *Who can see it*:
+  - **Everyone sees the details** (default)
+  - **Others only see that I'm away**: the dashboard shows only the type (e.g. "Personal leave") and the dates;
+    the title and notes are never published
+  - **Only me**: not published at all; nobody else sees it, not even that you're away
+
+  The private details are kept only in the browser of the device where you entered them (the data files are
+  public, so they can't be stored there). On your other devices the day off shows as "Personal leave", and
+  "Only me" days off don't show. Days off that were published *before* you made them private stay readable in the
+  repository's commit history.
 - **Calendar colours**: each bar uses its project's colour, and the status is a small dot on the bar
   (🟡 up next, 🟢 completed, 🔴 not as planned, 🟠 awaiting update, no dot = planned later). The calendar only lists
   ongoing projects, special events and Holiday & leave by default; choose *All projects (incl. paused & completed)* to see your overall workload.
