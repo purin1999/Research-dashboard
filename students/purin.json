@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-04T12:57:58.569Z",
+    "updated": "2026-10-07T06:55:37.436Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -69,9 +69,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
+          "outcome": "done",
           "comment": "",
-          "updatedAt": "2026-10-01T10:56:15.902Z"
+          "updatedAt": "2026-10-07T06:55:03.550Z"
         },
         {
           "id": "s_9td8r07bqd",
@@ -83,9 +83,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
+          "outcome": "done",
           "comment": "",
-          "updatedAt": "2026-10-01T10:57:56.650Z"
+          "updatedAt": "2026-10-07T06:55:04.847Z"
         },
         {
           "id": "s_jetidl9phx",
@@ -595,8 +595,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-07T06:55:06.030Z"
         },
         {
           "id": "s_n913tzz9bi",
