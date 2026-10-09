@@ -472,3 +472,10 @@ input[type=search] { width: 100%; font: inherit; font-size: 16px; color: var(--t
   .sr-who .small { display: none; }
 }
 .privacy-note { font-size: .78rem; font-weight: 600; color: #475467; margin-top: 4px; }
+
+/* Meeting slide preview: a 4:3 page whose text scales with its width */
+.slide-preview { position: relative; width: 100%; aspect-ratio: 4 / 3; container-type: inline-size; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; color: #1b2130; }
+.slide-preview > * { position: absolute; line-height: 1.25; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.ms-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 12px; }
+.ms-checks .check { font-weight: 500; margin-bottom: 8px; }
+.ms-checks .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
