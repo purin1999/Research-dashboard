@@ -1376,8 +1376,8 @@ function renderChrome(route) {
   const p = route.name === 'project' && state.data ? findProject(route.id) : null;
   const active = home ? 'home' : ['calendar', 'completed'].includes(route.name) ? route.name
     : p && isResearch(p) && p.status !== 'ongoing' ? 'completed' : route.name === 'report' ? '' : 'dashboard';
-  $('.tabs').innerHTML = `<a href="#/" class="${active === 'home' ? 'active' : ''}"><span class="tab-ico" aria-hidden="true">👥</span><span>Students</span></a>
-    ${home ? '' : `${TABS.map(([k, path, ico, label]) => `<a href="${href(path)}" class="${active === k ? 'active' : ''}"><span class="tab-ico" aria-hidden="true">${ico}</span><span>${label}</span></a>`).join('')}
+  // No "Students" tab: "← All students" on the dashboard and the logo lead back to the overview.
+  $('.tabs').innerHTML = `${home ? '' : `${TABS.map(([k, path, ico, label]) => `<a href="${href(path)}" class="${active === k ? 'active' : ''}"><span class="tab-ico" aria-hidden="true">${ico}</span><span>${label}</span></a>`).join('')}
     <button type="button" data-act="export"><span class="tab-ico" aria-hidden="true">⇪</span><span>Export</span></button>`}`;
 
   let actions = '<button class="btn sm" data-act="share" aria-label="Share visitor link">🔗<span class="lbl-long"> Share</span></button>';
