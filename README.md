@@ -56,7 +56,9 @@ progress, and **each student can only edit their own**.
   Google or Apple Calendar) and a full data backup (`.json`). You can export one project or everything.
 - **📽 Plan slide for the next meeting** (⇪ Export): one 4:3 PowerPoint slide (`.pptx`) with what you'll do until
   the next meeting. Pick the timespan (by default until the next entry of your pinned meeting event, or 1 or 2
-  weeks), the projects, and whether to include experiment conditions, notes and days off. Stages are grouped by
+  weeks), the projects, and whether to include experiment conditions, notes, days off and the results of past
+  stages. Stages that already took place show their result: a green ✓ (with its comment, if any), a red ✕ with
+  the reason it didn't go as planned, or an orange ! when the result hasn't been recorded yet. Stages are grouped by
   project with their dates; the preview shows the slide exactly as it will look. If it doesn't fit, notes and extra
   conditions are left out first, then the latest stages become "+N more"; everything is always in the speaker
   notes. Private days off show only as their type, and "Only me" ones never appear.

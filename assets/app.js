@@ -543,6 +543,12 @@ function openExport() {
 // stages) so the slide never looks cramped.
 const SLIDE = { w: 10, h: 7.5, m: 0.75, top: 1.85, bottom: 6.7, card: 'F3F5F9' };
 const SLIDE_INK = { title: '1E2761', text: '1B2130', muted: '5B6475', faint: '8A93A3' };
+// Results of stages that already took place, in the dashboard's status colours.
+const SLIDE_RESULT = {
+  done:    { mark: '✓', label: 'Done as planned', color: '1F8A4C' },
+  failed:  { mark: '✕', label: 'Not as planned', color: 'C2302F' },
+  overdue: { mark: '!', label: 'Result not recorded yet', color: 'B86200' },
+};
 const SLIDE_TIERS = [
   { proj: 16, name: 15, date: 12, detail: 12, rowGap: 0.14, groupGap: 0.45 },
   { proj: 15, name: 14, date: 11, detail: 11, rowGap: 0.1, groupGap: 0.38 },
@@ -576,7 +582,11 @@ function slideContent({ from, to, pids, leave }) {
   for (const p of byColor()) {
     if (!pids.has(p.id) || isLeave(p)) continue;
     const items = p.stages.filter(inRange).sort((x, y) => stageRange(x).start - stageRange(y).start)
-      .map((s) => ({ s, date: slideDateLabel(s), name: s.name, conds: s.conditions.filter(Boolean), notes: s.notes.trim(), done: s.outcome === 'done' }));
+      .map((s) => {
+        const st = statusOf(s);
+        const result = s.outcome || (st === 'overdue' ? 'overdue' : null);
+        return { s, date: slideDateLabel(s), name: s.name, conds: s.conditions.filter(Boolean), notes: s.notes.trim(), result, comment: (s.comment || '').trim() };
+      });
     if (items.length) groups.push({ p, items, first: stageRange(items[0].s).start });
   }
   groups.sort((x, y) => x.first - y.first);
@@ -624,16 +634,24 @@ function slideLayout(content, opts, meta) {
           detail.push(...cs);
         }
         const noteText = opts.notes && notes && it.notes ? it.notes : '';
-        const nameH = textLines(`${it.done ? '✓ ' : ''}${it.name}`, nameW, t.name) * lineH(t.name);
+        const res = opts.results && it.result ? SLIDE_RESULT[it.result] : null;
+        // A green ✓ says "done" on its own; a result line is added only when it tells more.
+        const resLine = res && (it.result !== 'done' || it.comment);
+        const resText = resLine ? `${res.label}${it.comment ? `: ${it.comment}` : ''}` : '';
+        const resH = resText ? textLines(resText, nameW, t.detail) * lineH(t.detail) : 0;
+        const nameText = `${res ? `${res.mark} ` : ''}${it.name}`;
+        const nameH = textLines(nameText, nameW, t.name) * lineH(t.name);
         const detH = detail.length ? textLines(detail.join('\n'), nameW, t.detail) * lineH(t.detail) : 0;
         const noteH = noteText ? textLines(noteText, nameW, t.detail) * lineH(t.detail) : 0;
         const dateH = textLines(it.date, dateW, t.date) * lineH(t.date);
-        const h = Math.max(dateH, nameH + (detH ? detH + 0.03 : 0) + (noteH ? noteH + 0.03 : 0));
+        const h = Math.max(dateH, nameH + (resH ? resH + 0.03 : 0) + (detH ? detH + 0.03 : 0) + (noteH ? noteH + 0.03 : 0));
         if (y + h > limit) { cut = true; break; }
         boxes.push({ kind: 'text', x: dateX, y: y + 0.02, w: dateW, h: dateH, text: it.date, pt: t.date, bold: true, color: SLIDE_INK.muted });
         let yy = y;
-        boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: nameH, text: `${it.done ? '✓ ' : ''}${it.name}`, pt: t.name, bold: true, color: SLIDE_INK.text });
+        boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: nameH, text: nameText, pt: t.name, bold: true, color: SLIDE_INK.text,
+          runs: res ? [{ text: `${res.mark} `, color: res.color }, { text: it.name }] : null });
         yy += nameH + 0.03;
+        if (resH) { boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: resH, text: resText, pt: t.detail, color: res.color, runs: [{ text: res.label, bold: true }, ...(it.comment ? [{ text: `: ${it.comment}` }] : [])] }); yy += resH + 0.03; }
         if (detH) { boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: detH, text: detail.join('\n'), pt: t.detail, color: SLIDE_INK.muted }); yy += detH + 0.03; }
         if (noteH) boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: noteH, text: noteText, pt: t.detail, italic: true, color: SLIDE_INK.faint });
         y += h + t.rowGap; shown++; placed++;
@@ -690,7 +708,7 @@ function slidePreviewHtml(layout) {
     ? `<span style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};height:${pct(b.h, SLIDE.h)};background:#${b.color};border-radius:1.2cqw"></span>`
     : b.kind === 'dot'
     ? `<span style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};height:${pct(b.h, SLIDE.h)};background:#${esc(b.color)};border-radius:50%"></span>`
-    : `<div style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};font-size:${(b.pt * 0.1389).toFixed(3)}cqw;color:#${b.color};${b.bold ? 'font-weight:700;' : ''}${b.italic ? 'font-style:italic;' : ''}${b.align ? `text-align:${b.align};` : ''}">${esc(b.text)}</div>`)).join('')}</div>`;
+    : `<div style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};font-size:${(b.pt * 0.1389).toFixed(3)}cqw;color:#${b.color};${b.bold ? 'font-weight:700;' : ''}${b.italic ? 'font-style:italic;' : ''}${b.align ? `text-align:${b.align};` : ''}">${b.runs ? b.runs.map((r) => `<span style="${r.color ? `color:#${r.color};` : ''}${r.bold ? 'font-weight:700;' : ''}">${esc(r.text)}</span>`).join('') : esc(b.text)}</div>`)).join('')}</div>`;
 }
 
 let pptxLoading = null;
@@ -717,7 +735,8 @@ async function writeSlide(layout, meta, notesText) {
   for (const b of layout.boxes) {
     if (b.kind === 'card') { sl.addShape(pres.ShapeType.roundRect, { x: b.x, y: b.y, w: b.w, h: b.h, rectRadius: 0.12, fill: { color: b.color }, line: { color: b.color, width: 0 } }); continue; }
     if (b.kind === 'dot') { sl.addShape(pres.ShapeType.ellipse, { x: b.x, y: b.y, w: b.w, h: b.h, fill: { color: b.color }, line: { color: b.color, width: 0 } }); continue; }
-    sl.addText(b.text, { x: b.x, y: b.y, w: b.w, h: Math.max(b.h, lineH(b.pt)), fontFace: 'Calibri', fontSize: b.pt, bold: !!b.bold, italic: !!b.italic, color: b.color, align: b.align || 'left', valign: 'top', margin: 0, isTextBox: true, fit: 'none', paraSpaceAfter: 0 });
+    const body = b.runs ? b.runs.map((r) => ({ text: r.text, options: { ...(r.color ? { color: r.color } : {}), ...(r.bold != null ? { bold: r.bold } : {}) } })) : b.text;
+    sl.addText(body, { x: b.x, y: b.y, w: b.w, h: Math.max(b.h, lineH(b.pt)), fontFace: 'Calibri', fontSize: b.pt, bold: !!b.bold, italic: !!b.italic, color: b.color, align: b.align || 'left', valign: 'top', margin: 0, isTextBox: true, fit: 'none', paraSpaceAfter: 0 });
   }
   if (notesText) sl.addNotes(notesText);
   return pres.write({ outputType: 'blob' });
@@ -728,7 +747,7 @@ function openMeetingSlide() {
   const today = ymd(new Date());
   const projects = byColor().filter((p) => (isResearch(p) && p.status === 'ongoing') || isEvent(p));
   const name = state.rec?.entry.name || state.data.meta.title;
-  const st = { from: today, to: meet.date || ymd(addDays(new Date(), 7)), conds: true, notes: true, leave: true, pids: new Set(projects.filter((p) => !meet.pids.has(p.id)).map((p) => p.id)), title: meet.date ? 'Plan until the next meeting' : 'Plan for the coming week' };
+  const st = { from: today, to: meet.date || ymd(addDays(new Date(), 7)), conds: true, notes: true, leave: true, results: true, pids: new Set(projects.filter((p) => !meet.pids.has(p.id)).map((p) => p.id)), title: meet.date ? 'Plan until the next meeting' : 'Plan for the coming week' };
   const quick = [
     ...(meet.date ? [[meet.date, `Until next meeting (${fmt(parseYmd(meet.date), { weekday: 'short', day: 'numeric', month: 'short' })})`]] : []),
     [ymd(addDays(new Date(), 7)), '1 week'], [ymd(addDays(new Date(), 14)), '2 weeks'],
@@ -749,7 +768,8 @@ function openMeetingSlide() {
         <div class="ms-checks">${projects.map((p) => `<label class="check"><input type="checkbox" name="pid" value="${esc(p.id)}" ${st.pids.has(p.id) ? 'checked' : ''}><span class="dot" style="background:${esc(p.color)}"></span>${isEvent(p) ? '📌 ' : ''}${esc(p.title)}</label>`).join('')}
           <label class="check"><input type="checkbox" name="leave" ${st.leave ? 'checked' : ''}>🏖 Days off</label>
           <label class="check"><input type="checkbox" name="conds" checked>Experiment conditions</label>
-          <label class="check"><input type="checkbox" name="notes" checked>Notes</label></div></div>
+          <label class="check"><input type="checkbox" name="notes" checked>Notes</label>
+          <label class="check"><input type="checkbox" name="results" checked>Results of past stages</label></div></div>
       <div id="ms-preview"></div>
       <p class="help" id="ms-note" style="margin-top:8px"></p>
     </form>`,
@@ -759,7 +779,7 @@ function openMeetingSlide() {
       const sync = () => {
         st.from = form.from.value || today; st.to = form.to.value || st.from;
         if (st.to < st.from) st.to = st.from;
-        st.title = form.title.value; st.conds = form.conds.checked; st.notes = form.notes.checked; st.leave = form.leave.checked;
+        st.title = form.title.value; st.conds = form.conds.checked; st.notes = form.notes.checked; st.leave = form.leave.checked; st.results = form.results.checked;
         st.pids = new Set($$('input[name=pid]:checked', form).map((x) => x.value));
         const lay = build();
         $('#ms-preview', m).innerHTML = slidePreviewHtml(lay);
@@ -773,7 +793,7 @@ function openMeetingSlide() {
         const btn = $('.modal-foot [type=submit]', m); btn.disabled = true; btn.textContent = 'Making slide…';
         try {
           const content = slideContent(st);
-          const notes = content.groups.map((g) => `${g.p.title}\n${g.items.map((it) => `- ${it.date.replace('\n', ' ')}: ${it.name}${it.conds.map((c, i) => `\n    Condition ${i + 1}: ${c}`).join('')}${it.notes ? `\n    Note: ${it.notes}` : ''}`).join('\n')}`).join('\n\n');
+          const notes = content.groups.map((g) => `${g.p.title}\n${g.items.map((it) => `- ${it.date.replace('\n', ' ')}: ${it.name}${it.result ? `\n    Result: ${SLIDE_RESULT[it.result].label}${it.comment ? ` (${it.comment})` : ''}` : ''}${it.conds.map((c, i) => `\n    Condition ${i + 1}: ${c}`).join('')}${it.notes ? `\n    Note: ${it.notes}` : ''}`).join('\n')}`).join('\n\n');
           const blob = await writeSlide(build(), meta(), notes);
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob); a.download = `plan-${slug(name)}-${st.from}.pptx`;
