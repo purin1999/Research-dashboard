@@ -518,6 +518,9 @@ function exportICS(scope) {
 function openExport() {
   const route = parseRoute();
   const p = route.name === 'project' ? findProject(route.id) : null;
+  const slide = `<div class="export-group"><h3>For the next meeting</h3><div class="export-list">
+      <button class="btn" data-act="meeting-slide">📽 Plan slide (.pptx, 4:3) <small>what you'll do until the next meeting</small></button>
+    </div></div>`;
   const group = (scope, title) => `
     <div class="export-group"><h3>${esc(title)}</h3><div class="export-list">
       <button class="btn" data-act="dl" data-kind="report" data-scope="${scope}">🖨️ Printable report / PDF <small>print or save as PDF</small></button>
@@ -527,8 +530,262 @@ function openExport() {
     </div></div>`;
   openModal({
     title: 'Export',
-    body: `${p ? group(p.id, `This project — ${p.title}`) : ''}${group('all', 'All projects')}
+    body: `${slide}${p ? group(p.id, `This project — ${p.title}`) : ''}${group('all', 'All projects')}
       <p class="help" style="margin-top:14px">On iPhone, downloaded files go to the Files app (Downloads). Open the .ics file to add the schedule to your calendar.</p>`,
+  });
+}
+
+// ---------------------------------------------------------------- meeting slide
+// One 4:3 PowerPoint slide with what the student plans to do until the next
+// meeting: stages grouped by project, with their dates, experiment conditions
+// and notes. A single layout model drives both the in-app preview and the .pptx,
+// and it steps down in size (then drops notes, then extra conditions, then
+// stages) so the slide never looks cramped.
+const SLIDE = { w: 10, h: 7.5, m: 0.75, top: 1.85, bottom: 6.7, card: 'F3F5F9' };
+const SLIDE_INK = { title: '1E2761', text: '1B2130', muted: '5B6475', faint: '8A93A3' };
+const SLIDE_TIERS = [
+  { proj: 16, name: 15, date: 12, detail: 12, rowGap: 0.14, groupGap: 0.45 },
+  { proj: 15, name: 14, date: 11, detail: 11, rowGap: 0.1, groupGap: 0.38 },
+];
+
+// Where the next meeting is: the next entry of a pinned special event (or of an
+// event called "…meeting…") after today.
+function nextMeetingDate() {
+  const events = state.data.projects.filter(isEvent);
+  const pick = events.filter((p) => p.top).concat(events.filter((p) => !p.top && /meeting/i.test(p.title)));
+  const today = ymd(new Date());
+  const dates = pick.flatMap((p) => p.stages.map((s) => s.date)).filter((d) => d && d > today).sort();
+  return dates[0] ? { date: dates[0], pids: new Set(pick.map((p) => p.id)) } : { date: '', pids: new Set(pick.map((p) => p.id)) };
+}
+
+function slideDateLabel(s) {
+  const a = parseYmd(s.date);
+  const day = (d) => fmt(d, { weekday: 'short', day: 'numeric', month: 'short' });
+  if (s.endDate && s.endDate > s.date) {
+    const b = parseYmd(s.endDate);
+    return a.getMonth() === b.getMonth() ? `${a.getDate()}–${fmt(b, { day: 'numeric', month: 'short' })}` : `${fmtShort(a)} – ${fmtShort(b)}`;
+  }
+  return s.allDay ? day(a) : `${day(a)}\n${s.start}${s.end ? `–${s.end}` : ''}`;
+}
+
+// What goes on the slide, before any layout.
+function slideContent({ from, to, pids, leave }) {
+  const a = parseYmd(from); const b = addDays(parseYmd(to), 1);
+  const inRange = (s) => { const r = stageRange(s); return r && r.start < b && r.end >= a; };
+  const groups = [];
+  for (const p of byColor()) {
+    if (!pids.has(p.id) || isLeave(p)) continue;
+    const items = p.stages.filter(inRange).sort((x, y) => stageRange(x).start - stageRange(y).start)
+      .map((s) => ({ s, date: slideDateLabel(s), name: s.name, conds: s.conditions.filter(Boolean), notes: s.notes.trim(), done: s.outcome === 'done' }));
+    if (items.length) groups.push({ p, items, first: stageRange(items[0].s).start });
+  }
+  groups.sort((x, y) => x.first - y.first);
+  // Days off as they look to others: private details are never put on a slide.
+  const away = !leave ? [] : state.data.projects.filter(isLeave).flatMap((p) => p.stages).filter((s) => s.privacy !== 'hidden' && inRange(s))
+    .sort((x, y) => (x.date < y.date ? -1 : 1)).map((s) => `${slideDateLabel(s).replace('\n', ' ')} (${s.privacy === 'busy' ? (LEAVE_KINDS[s.kind] || LEAVE_KINDS.other).label : s.name})`);
+  return { groups, away };
+}
+
+// Rough text height (inches) for a box of the given width, used to fit the slide.
+function textLines(text, widthIn, pt) {
+  const perLine = Math.max(8, Math.floor((widthIn * 72) / (pt * 0.5)));
+  return String(text).split('\n').reduce((n, line) => {
+    const w = [...line].reduce((acc, ch) => acc + (ch.charCodeAt(0) > 0x2e80 ? 2 : 1), 0);
+    return n + Math.max(1, Math.ceil(w / perLine));
+  }, 0);
+}
+const lineH = (pt) => (pt * 1.25) / 72;
+
+// Lays the content out; returns positioned boxes plus what had to be left out.
+function slideLayout(content, opts, meta) {
+  const { m, top, bottom, w } = SLIDE;
+  const awayText = content.away.length ? `Away: ${content.away.join(' · ')}` : '';
+  const awayH = (t) => (awayText ? textLines(awayText, w - 2 * m, t.detail) * lineH(t.detail) : 0);
+  const tryLayout = (t, { notes, maxConds, reserve = 0, until = Infinity }) => {
+    const limit = bottom - reserve - (awayText ? awayH(t) + 0.1 : 0);
+    const boxes = []; let y = top; let shown = 0; let total = 0; let cut = false;
+    const dateX = m + 0.32; const dateW = 1.3; const nameX = dateX + dateW + 0.15; const nameW = w - m - nameX;
+    for (const g of content.groups) {
+      total += g.items.length;
+      if (cut) continue;
+      const head = lineH(t.proj);
+      if (y + head + lineH(t.name) > limit) { cut = true; continue; }
+      const groupStart = boxes.length; const yStart = y;
+      boxes.push({ kind: 'dot', x: m, y: y + head / 2 - 0.08, w: 0.16, h: 0.16, color: g.p.color.replace('#', '') });
+      boxes.push({ kind: 'text', x: m + 0.32, y, w: w - 2 * m - 0.32, h: head, text: g.p.title, pt: t.proj, bold: true, color: SLIDE_INK.title });
+      y += head + 0.06;
+      let placed = 0;
+      for (const it of g.items) {
+        if (stageRange(it.s).start > until) continue; // later stages are summed up below
+        const detail = [];
+        if (opts.conds && it.conds.length) {
+          const cs = it.conds.slice(0, maxConds).map((c, i) => `Condition ${i + 1}: ${c}`);
+          if (it.conds.length > maxConds) cs.push(`+${it.conds.length - maxConds} more condition${it.conds.length - maxConds > 1 ? 's' : ''}`);
+          detail.push(...cs);
+        }
+        const noteText = opts.notes && notes && it.notes ? it.notes : '';
+        const nameH = textLines(`${it.done ? '✓ ' : ''}${it.name}`, nameW, t.name) * lineH(t.name);
+        const detH = detail.length ? textLines(detail.join('\n'), nameW, t.detail) * lineH(t.detail) : 0;
+        const noteH = noteText ? textLines(noteText, nameW, t.detail) * lineH(t.detail) : 0;
+        const dateH = textLines(it.date, dateW, t.date) * lineH(t.date);
+        const h = Math.max(dateH, nameH + (detH ? detH + 0.03 : 0) + (noteH ? noteH + 0.03 : 0));
+        if (y + h > limit) { cut = true; break; }
+        boxes.push({ kind: 'text', x: dateX, y: y + 0.02, w: dateW, h: dateH, text: it.date, pt: t.date, bold: true, color: SLIDE_INK.muted });
+        let yy = y;
+        boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: nameH, text: `${it.done ? '✓ ' : ''}${it.name}`, pt: t.name, bold: true, color: SLIDE_INK.text });
+        yy += nameH + 0.03;
+        if (detH) { boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: detH, text: detail.join('\n'), pt: t.detail, color: SLIDE_INK.muted }); yy += detH + 0.03; }
+        if (noteH) boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: noteH, text: noteText, pt: t.detail, italic: true, color: SLIDE_INK.faint });
+        y += h + t.rowGap; shown++; placed++;
+      }
+      if (!placed) { boxes.length = groupStart; y = yStart; continue; } // no project heading without stages
+      // Each project sits on a soft rounded card, drawn underneath its text.
+      boxes.splice(groupStart, 0, { kind: 'card', x: m - 0.2, y: yStart - 0.14, w: w - 2 * m + 0.4, h: y - t.rowGap - yStart + 0.28, color: SLIDE.card });
+      y += t.groupGap - t.rowGap;
+    }
+    return { boxes, shown, total, cut, y, t };
+  };
+  // The "Away" line goes after the projects (and after "+N more", if any).
+  const addAway = (r, yAt) => { if (awayText) r.boxes.push({ kind: 'text', x: m, y: yAt, w: w - 2 * m, h: awayH(r.t), text: awayText, pt: r.t.detail, color: SLIDE_INK.muted }); };
+  // Try the roomiest version first, then make room step by step; as a last
+  // resort keep what fits and say how many stages were left out.
+  const steps = [];
+  for (const t of SLIDE_TIERS) steps.push({ t, notes: true, maxConds: 99, note: '' });
+  steps.push({ t: SLIDE_TIERS[1], notes: false, maxConds: 99, note: 'Notes were left out to fit one slide (they are in the speaker notes).' });
+  steps.push({ t: SLIDE_TIERS[1], notes: false, maxConds: 2, note: 'Notes and some conditions were left out to fit one slide (all of them are in the speaker notes).' });
+  let res;
+  for (const st of steps) { res = { ...tryLayout(st.t, st), note: st.note }; if (!res.cut) break; }
+  if (res.cut) {
+    // Keep the nearest stages of every project and leave out the latest ones.
+    const all = content.groups.flatMap((g) => g.items.map((it) => +stageRange(it.s).start));
+    const starts = [...new Set(all)].sort((x, y) => y - x);
+    for (const until of starts) {
+      res = { ...tryLayout(SLIDE_TIERS[1], { notes: false, maxConds: 2, reserve: 0.4, until }), until };
+      if (!res.cut) break;
+    }
+    const left = res.total - res.shown;
+    let yAt = res.y + 0.02;
+    if (left > 0) {
+      const firstLeft = Math.min(...all.filter((x) => x > res.until)); // the earliest stage left out
+      const fromTxt = Number.isFinite(firstLeft) ? ` from ${fmt(new Date(firstLeft), { day: 'numeric', month: 'short' })}` : '';
+      res.boxes.push({ kind: 'text', x: m + 0.32, y: yAt, w: 7, h: lineH(11), text: `+${left} more stage${left > 1 ? 's' : ''}${fromTxt} — see the dashboard`, pt: 11, italic: true, color: SLIDE_INK.faint });
+      yAt += lineH(11) + 0.12;
+    }
+    addAway(res, yAt);
+    res.note = `Too much for one slide: ${left ? `the ${left} latest stage${left > 1 ? 's were' : ' was'} summed up as “+${left} more”, and ` : ''}notes and some conditions were left out (all of them are in the speaker notes). Try a shorter timespan or fewer projects.`;
+  } else addAway(res, res.y + 0.02);
+  const head = [
+    { kind: 'text', x: SLIDE.m, y: 0.5, w: SLIDE.w - 2 * SLIDE.m, h: 0.7, text: meta.title, pt: 30, bold: true, color: SLIDE_INK.title },
+    { kind: 'text', x: SLIDE.m, y: 1.15, w: SLIDE.w - 2 * SLIDE.m, h: 0.35, text: meta.subtitle, pt: 14, color: SLIDE_INK.muted },
+  ];
+  const foot = { kind: 'text', x: SLIDE.m, y: 7.0, w: SLIDE.w - 2 * SLIDE.m, h: 0.25, text: meta.footer, pt: 9, color: SLIDE_INK.faint, align: 'right' };
+  const empty = !content.groups.length && !content.away.length
+    ? [{ kind: 'text', x: SLIDE.m, y: SLIDE.top, w: SLIDE.w - 2 * SLIDE.m, h: 0.4, text: 'Nothing planned in this period.', pt: 16, italic: true, color: SLIDE_INK.muted }] : [];
+  return { boxes: [...head, ...res.boxes, ...empty, foot], note: res.note };
+}
+
+function slidePreviewHtml(layout) {
+  const pct = (v, of) => `${(v / of) * 100}%`;
+  return `<div class="slide-preview" aria-label="Slide preview">${layout.boxes.map((b) => (b.kind === 'card'
+    ? `<span style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};height:${pct(b.h, SLIDE.h)};background:#${b.color};border-radius:1.2cqw"></span>`
+    : b.kind === 'dot'
+    ? `<span style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};height:${pct(b.h, SLIDE.h)};background:#${esc(b.color)};border-radius:50%"></span>`
+    : `<div style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};font-size:${(b.pt * 0.1389).toFixed(3)}cqw;color:#${b.color};${b.bold ? 'font-weight:700;' : ''}${b.italic ? 'font-style:italic;' : ''}${b.align ? `text-align:${b.align};` : ''}">${esc(b.text)}</div>`)).join('')}</div>`;
+}
+
+let pptxLoading = null;
+function loadPptx() {
+  if (window.PptxGenJS) return Promise.resolve();
+  pptxLoading ||= new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = 'assets/vendor/pptxgen.bundle.js';
+    sc.onload = () => resolve();
+    sc.onerror = () => { pptxLoading = null; reject(new Error('could not load the slide maker')); };
+    document.head.appendChild(sc);
+  });
+  return pptxLoading;
+}
+
+async function writeSlide(layout, meta, notesText) {
+  await loadPptx();
+  const pres = new window.PptxGenJS();
+  pres.layout = 'LAYOUT_4x3'; // 10" × 7.5", the lab's slide size
+  pres.title = meta.title; pres.author = meta.author;
+  pres.theme = { headFontFace: 'Calibri', bodyFontFace: 'Calibri' };
+  const sl = pres.addSlide();
+  sl.background = { color: 'FFFFFF' };
+  for (const b of layout.boxes) {
+    if (b.kind === 'card') { sl.addShape(pres.ShapeType.roundRect, { x: b.x, y: b.y, w: b.w, h: b.h, rectRadius: 0.12, fill: { color: b.color }, line: { color: b.color, width: 0 } }); continue; }
+    if (b.kind === 'dot') { sl.addShape(pres.ShapeType.ellipse, { x: b.x, y: b.y, w: b.w, h: b.h, fill: { color: b.color }, line: { color: b.color, width: 0 } }); continue; }
+    sl.addText(b.text, { x: b.x, y: b.y, w: b.w, h: Math.max(b.h, lineH(b.pt)), fontFace: 'Calibri', fontSize: b.pt, bold: !!b.bold, italic: !!b.italic, color: b.color, align: b.align || 'left', valign: 'top', margin: 0, isTextBox: true, fit: 'none', paraSpaceAfter: 0 });
+  }
+  if (notesText) sl.addNotes(notesText);
+  return pres.write({ outputType: 'blob' });
+}
+
+function openMeetingSlide() {
+  const meet = nextMeetingDate();
+  const today = ymd(new Date());
+  const projects = byColor().filter((p) => (isResearch(p) && p.status === 'ongoing') || isEvent(p));
+  const name = state.rec?.entry.name || state.data.meta.title;
+  const st = { from: today, to: meet.date || ymd(addDays(new Date(), 7)), conds: true, notes: true, leave: true, pids: new Set(projects.filter((p) => !meet.pids.has(p.id)).map((p) => p.id)), title: meet.date ? 'Plan until the next meeting' : 'Plan for the coming week' };
+  const quick = [
+    ...(meet.date ? [[meet.date, `Until next meeting (${fmt(parseYmd(meet.date), { weekday: 'short', day: 'numeric', month: 'short' })})`]] : []),
+    [ymd(addDays(new Date(), 7)), '1 week'], [ymd(addDays(new Date(), 14)), '2 weeks'],
+  ];
+  const range = () => { const a = parseYmd(st.from); const b = parseYmd(st.to); return a.getFullYear() === b.getFullYear() ? `${fmt(a, { weekday: 'short', day: 'numeric', month: 'short' })} – ${fmtDay(b)}` : `${fmtDay(a)} – ${fmtDay(b)}`; };
+  const meta = () => ({ title: st.title.trim() || 'Plan', subtitle: `${name} · ${range()}`, footer: `Research Progress · ${fmtDay(new Date())}`, author: name });
+  const build = () => slideLayout(slideContent(st), st, meta());
+  openModal({
+    title: 'Plan slide for the next meeting',
+    body: `<form id="ms-form" autocomplete="off">
+      <div class="grid2">
+        <label class="field"><span>From</span><input type="date" name="from" value="${st.from}"></label>
+        <label class="field"><span>Until (inclusive)</span><input type="date" name="to" value="${st.to}"></label>
+      </div>
+      <div class="row" style="margin:-4px 0 12px">${quick.map(([d, l]) => `<button type="button" class="btn sm" data-to="${d}">${esc(l)}</button>`).join('')}</div>
+      <label class="field"><span>Slide title</span><input type="text" name="title" value="${esc(st.title)}"></label>
+      <div class="field"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Include</span>
+        <div class="ms-checks">${projects.map((p) => `<label class="check"><input type="checkbox" name="pid" value="${esc(p.id)}" ${st.pids.has(p.id) ? 'checked' : ''}><span class="dot" style="background:${esc(p.color)}"></span>${isEvent(p) ? '📌 ' : ''}${esc(p.title)}</label>`).join('')}
+          <label class="check"><input type="checkbox" name="leave" ${st.leave ? 'checked' : ''}>🏖 Days off</label>
+          <label class="check"><input type="checkbox" name="conds" checked>Experiment conditions</label>
+          <label class="check"><input type="checkbox" name="notes" checked>Notes</label></div></div>
+      <div id="ms-preview"></div>
+      <p class="help" id="ms-note" style="margin-top:8px"></p>
+    </form>`,
+    footer: '<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="ms-form">⬇ Download .pptx</button>',
+    onMount(m) {
+      const form = $('#ms-form', m);
+      const sync = () => {
+        st.from = form.from.value || today; st.to = form.to.value || st.from;
+        if (st.to < st.from) st.to = st.from;
+        st.title = form.title.value; st.conds = form.conds.checked; st.notes = form.notes.checked; st.leave = form.leave.checked;
+        st.pids = new Set($$('input[name=pid]:checked', form).map((x) => x.value));
+        const lay = build();
+        $('#ms-preview', m).innerHTML = slidePreviewHtml(lay);
+        $('#ms-note', m).textContent = lay.note || 'Preview of the slide (4:3). Full notes and conditions also go into the speaker notes.';
+      };
+      form.addEventListener('input', sync); form.addEventListener('change', sync);
+      $$('[data-to]', m).forEach((b) => b.addEventListener('click', () => { form.to.value = b.dataset.to; sync(); }));
+      sync();
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = $('.modal-foot [type=submit]', m); btn.disabled = true; btn.textContent = 'Making slide…';
+        try {
+          const content = slideContent(st);
+          const notes = content.groups.map((g) => `${g.p.title}\n${g.items.map((it) => `- ${it.date.replace('\n', ' ')}: ${it.name}${it.conds.map((c, i) => `\n    Condition ${i + 1}: ${c}`).join('')}${it.notes ? `\n    Note: ${it.notes}` : ''}`).join('\n')}`).join('\n\n');
+          const blob = await writeSlide(build(), meta(), notes);
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob); a.download = `plan-${slug(name)}-${st.from}.pptx`;
+          document.body.appendChild(a); a.click();
+          setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+          closeModal(); toast(`Downloaded ${a.download}`);
+        } catch (err) {
+          btn.disabled = false; btn.textContent = '⬇ Download .pptx';
+          toast(`Could not make the slide: ${err.message}`, 5000);
+        }
+      });
+    },
   });
 }
 
@@ -1867,6 +2124,7 @@ const actions = {
   },
   settings() { openSettings(); },
   export() { closeModal(); openExport(); },
+  'meeting-slide'() { closeModal(); openMeetingSlide(); },
   dl(el) {
     const { kind, scope } = el.dataset;
     closeModal();
