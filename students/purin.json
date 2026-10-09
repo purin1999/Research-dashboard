@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-09T03:56:49.632Z",
+    "updated": "2026-10-09T04:17:15.885Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -382,6 +382,19 @@
           "conditions": [],
           "date": "2026-10-22",
           "endDate": "2026-10-23",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_o8avvdexlx",
+          "name": "Meeting with Theavy",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-09",
+          "endDate": "",
           "allDay": true,
           "start": "",
           "end": "",
