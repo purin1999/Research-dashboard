@@ -33,6 +33,15 @@
       "repo": "purin2000/research-progression",
       "branch": "main",
       "path": "data.json"
+    },
+    {
+      "id": "theavy",
+      "name": "Theavy",
+      "grade": "D1",
+      "github": "theavychea",
+      "repo": "theavychea/Research",
+      "branch": "main",
+      "path": "data.json"
     }
   ]
 }
