@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-09T02:55:21.564Z",
+    "updated": "2026-10-09T03:56:49.632Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -623,8 +623,9 @@
           "allDay": false,
           "start": "11:00",
           "end": "12:00",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-09T03:56:48.051Z"
         },
         {
           "id": "s_k0eajj483b",
