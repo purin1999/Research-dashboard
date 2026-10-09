@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-09T04:17:15.885Z",
+    "updated": "2026-10-09T05:30:37.014Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -1014,6 +1014,19 @@
           "notes": "",
           "conditions": [],
           "date": "2026-10-30",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_3hy2dbzo2e",
+          "name": "Group meeting",
+          "notes": "Attendants: Yuika, Theavy",
+          "conditions": [],
+          "date": "2026-10-16",
           "endDate": "",
           "allDay": true,
           "start": "",
