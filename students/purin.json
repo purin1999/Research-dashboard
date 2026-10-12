@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-09T07:54:54.835Z",
+    "updated": "2026-10-12T11:14:53.766Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -317,16 +317,16 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": "",
-          "updatedAt": "2026-10-01T02:24:53.819Z"
+          "outcome": "done",
+          "comment": "Setting up tailnet environment.\nConnect through Windows’ Remote-Desktop",
+          "updatedAt": "2026-10-12T11:14:36.683Z"
         },
         {
           "id": "s_h3cc7c3o8v",
           "name": "(Demo) Rapid slug measurement",
           "notes": "Operate with mini PC\n(If possible) operate from main PC remotely",
           "conditions": [],
-          "date": "2026-10-12",
+          "date": "2026-10-13",
           "endDate": "",
           "allDay": true,
           "start": "",
