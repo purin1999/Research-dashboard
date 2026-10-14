@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-13T07:28:33.739Z",
+    "updated": "2026-10-14T01:28:55.568Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -97,15 +97,16 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-14T01:27:09.700Z"
         },
         {
           "id": "s_dsnsh9cew3",
           "name": "Writing introduction #1",
           "notes": "scCO2 emulsion in microfluidic process",
           "conditions": [],
-          "date": "2026-10-13",
+          "date": "2026-10-16",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -326,23 +327,26 @@
           "name": "(Demo) Rapid slug measurement",
           "notes": "Operate with mini PC\n(If possible) operate from main PC remotely",
           "conditions": [],
-          "date": "2026-10-14",
+          "date": "2026-10-13",
           "endDate": "",
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "(Confirmed with Theavy) one minute is enough for data acquisition",
+          "updatedAt": "2026-10-13T08:19:42.365Z"
         },
         {
           "id": "s_55zv5pf3bn",
-          "name": "Slug measurement",
+          "name": "Slug measurement #1",
           "notes": "",
           "conditions": [
-            "To be decided with Theavy"
+            "I.D. 0.25mm 10~20 MPa",
+            "I.D. 0.50mm 10~20 MPa",
+            "I.D. 1.00mm 10~20 MPa"
           ],
           "date": "2026-10-14",
-          "endDate": "2026-10-16",
+          "endDate": "2026-10-15",
           "allDay": true,
           "start": "",
           "end": "",
@@ -398,8 +402,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "Purin: water/scCO2 slug (pressure series)\nTheavy: water/squalane slug (varied parameters, comparing with hexane seires)",
+          "updatedAt": "2026-10-13T08:17:09.819Z"
         }
       ],
       "type": "research",
@@ -666,6 +671,19 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-10-04T09:41:22.642Z"
+        },
+        {
+          "id": "s_ztpcbqlo7x",
+          "name": "Mid-term presentation attendance",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-11-30",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "type": "event",
