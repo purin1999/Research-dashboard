@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-15T16:01:21.908Z",
+    "updated": "2026-10-15T17:19:05.565Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -341,35 +341,24 @@
           "name": "Slug measurement #1",
           "notes": "",
           "conditions": [
-            "CO2 only 25C 10~20 MPa",
-            "CO2 only 40C 10~20 MPa"
+            "CO2 only 25C 10~20 MPa"
           ],
           "date": "2026-10-14",
-          "endDate": "2026-10-16",
-          "allDay": true,
-          "start": "",
-          "end": "",
-          "outcome": null,
-          "comment": ""
-        },
-        {
-          "id": "s_f1drtty7jp",
-          "name": "Data collection: IFT in water/CO2 system",
-          "notes": "",
-          "conditions": [],
-          "date": "2026-10-20",
           "endDate": "",
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-15T17:16:05.110Z"
         },
         {
-          "id": "s_nn3m61zccq",
-          "name": "(Demo) CO2 slug measurement",
+          "id": "s_f1drtty7jp",
+          "name": "Slug measurement #3",
           "notes": "",
-          "conditions": [],
+          "conditions": [
+            "CO2+Ethanol 40C 10~20 MPa"
+          ],
           "date": "2026-10-21",
           "endDate": "",
           "allDay": true,
@@ -379,12 +368,30 @@
           "comment": ""
         },
         {
+          "id": "s_nn3m61zccq",
+          "name": "Slug measurement #2",
+          "notes": "",
+          "conditions": [
+            "CO2 only 40C 10~20 MPa"
+          ],
+          "date": "2026-10-20",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
           "id": "s_lngh9z0kg7",
-          "name": "Modification or Exp.",
+          "name": "Slug data extraction + analysis",
           "notes": "Depends on Demo result",
-          "conditions": [],
+          "conditions": [
+            "CO2 only 40C 10~20MPa",
+            "CO2+Ethanol 40C 10~20MPa"
+          ],
           "date": "2026-10-22",
-          "endDate": "2026-10-23",
+          "endDate": "",
           "allDay": true,
           "start": "",
           "end": "",
@@ -404,6 +411,22 @@
           "outcome": "done",
           "comment": "Purin: water/scCO2 slug (pressure series)\nTheavy: water/squalane slug (varied parameters, comparing with hexane seires)",
           "updatedAt": "2026-10-13T08:17:09.819Z"
+        },
+        {
+          "id": "s_p65p3twbtg",
+          "name": "Slug data extraction + analysis",
+          "notes": "Revise the data extraction procedure",
+          "conditions": [
+            "CO2 only 25C 10~20 MPa"
+          ],
+          "date": "2026-10-15",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-15T17:17:20.393Z"
         }
       ],
       "type": "research",
@@ -1044,6 +1067,19 @@
           "notes": "Attendants: Yuika, Theavy",
           "conditions": [],
           "date": "2026-10-16",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_a76y10zdl3",
+          "name": "Group meeting",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-10-23",
           "endDate": "",
           "allDay": true,
           "start": "",
