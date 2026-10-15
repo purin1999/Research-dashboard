@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-15T15:51:41.532Z",
+    "updated": "2026-10-15T16:01:21.908Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -341,8 +341,8 @@
           "name": "Slug measurement #1",
           "notes": "",
           "conditions": [
-            "CO2 only 10~20 MPa",
-            "CO2+Ethanol only 10~20 MPa"
+            "CO2 only 25C 10~20 MPa",
+            "CO2 only 40C 10~20 MPa"
           ],
           "date": "2026-10-14",
           "endDate": "2026-10-16",
