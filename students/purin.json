@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-22T11:59:42.796Z",
+    "updated": "2026-10-22T12:00:12.037Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -412,9 +412,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": "failed",
-          "comment": "Too much light exposure causes deficit in data",
-          "updatedAt": "2026-10-21T09:36:01.346Z"
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-22T12:00:09.381Z"
         },
         {
           "id": "s_puce2q364p",
