@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-22T11:58:53.913Z",
+    "updated": "2026-10-22T11:59:42.796Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -475,8 +475,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "failed",
+          "comment": "Slug data cannot be translated to IFT with current opt. Scale",
+          "updatedAt": "2026-10-22T11:59:35.451Z"
         },
         {
           "id": "s_upm8vg47hl",
