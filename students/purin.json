@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-21T03:52:04.868Z",
+    "updated": "2026-10-22T11:58:53.913Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -412,8 +412,26 @@
           "allDay": true,
           "start": "",
           "end": "",
+          "outcome": "failed",
+          "comment": "Too much light exposure causes deficit in data",
+          "updatedAt": "2026-10-21T09:36:01.346Z"
+        },
+        {
+          "id": "s_puce2q364p",
+          "name": "Slug data extraction + analysis (repeat)",
+          "notes": "Lowering lighting exposure from 30 to 20",
+          "conditions": [
+            "CO2 only 40C 10~20MPa",
+            "CO2+Ethanol 40C 10~20MPa"
+          ],
+          "date": "",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
           "outcome": null,
-          "comment": ""
+          "comment": "",
+          "updatedAt": "2026-10-21T09:36:01.346Z"
         },
         {
           "id": "s_o8avvdexlx",
@@ -467,7 +485,7 @@
           "conditions": [
             "CO2+EtOH+AOT(222mM) 40C 10~20MPa"
           ],
-          "date": "2026-10-26",
+          "date": "2026-10-27",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -688,19 +706,6 @@
           "updatedAt": "2026-10-04T12:56:04.784Z"
         },
         {
-          "id": "s_0vbe058fy1",
-          "name": "Planning for November",
-          "notes": "",
-          "conditions": [],
-          "date": "2026-10-30",
-          "endDate": "",
-          "allDay": true,
-          "start": "",
-          "end": "",
-          "outcome": null,
-          "comment": ""
-        },
-        {
           "id": "s_ecucj0r1ao",
           "name": "All meeting",
           "notes": "",
@@ -764,8 +769,23 @@
           "allDay": true,
           "start": "",
           "end": "",
+          "outcome": "failed",
+          "comment": "Leakage on Cooler’s pump. Need fix",
+          "updatedAt": "2026-10-21T09:34:24.599Z"
+        },
+        {
+          "id": "s_aodgbq15j4",
+          "name": "Modification of previous in-situ DLS equipment (repeat)",
+          "notes": "Modify to new stage of Yuika's project",
+          "conditions": [],
+          "date": "2026-10-26",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
           "outcome": null,
-          "comment": ""
+          "comment": "",
+          "updatedAt": "2026-10-21T09:34:24.599Z"
         }
       ],
       "type": "event",
@@ -1110,7 +1130,7 @@
       "stages": [
         {
           "id": "s_9rvnya582d",
-          "name": "Conference (expected)",
+          "name": "Group meeting",
           "notes": "",
           "conditions": [],
           "date": "2026-10-30",
