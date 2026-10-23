@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-23T02:59:04.377Z",
+    "updated": "2026-10-23T04:57:04.149Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -804,9 +804,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": "",
-          "updatedAt": "2026-10-21T09:34:24.599Z"
+          "outcome": "done",
+          "comment": "Fix the leakage.\nNext step is to adjust retention time before LNP collection",
+          "updatedAt": "2026-10-23T04:57:02.332Z"
         },
         {
           "id": "s_lr5yf4ks2x",
