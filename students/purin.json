@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-22T12:15:03.621Z",
+    "updated": "2026-10-23T02:59:04.377Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -467,10 +467,10 @@
         },
         {
           "id": "s_xd7p0px5vf",
-          "name": "Extraction of IFT from flow data (repeat)",
+          "name": "Simulation of sheer force in slug flow",
           "notes": "",
           "conditions": [
-            "High speed water-wetted flow"
+            "Claude に任せます!!!"
           ],
           "date": "2026-10-29",
           "endDate": "",
@@ -483,12 +483,10 @@
         },
         {
           "id": "s_upm8vg47hl",
-          "name": "Water-wetted high-speed flow #1",
-          "notes": "",
+          "name": "High-speed flow #1",
+          "notes": "To increase Ca, increasing the signal from IFT",
           "conditions": [
-            "CO2 only 40C 10~20MPa",
-            "CO2+EtOH(0.10) 40C 10~20MPa",
-            "CO2+EtOH(varied) 40C 20MPa"
+            "CO2 only 40C 10~20MPa (2x~ Q)"
           ],
           "date": "2026-10-27",
           "endDate": "",
@@ -500,10 +498,26 @@
         },
         {
           "id": "s_6q3ncgwz7o",
-          "name": "Water-wetted flow data extraction and analysis",
+          "name": "HIgh-speed flow data extraction and analysis",
           "notes": "",
           "conditions": [
-            "all three conditions on previous day"
+            "Same as a previous day"
+          ],
+          "date": "2026-10-28",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_oibo1bog28",
+          "name": "Correlation analysis",
+          "notes": "",
+          "conditions": [
+            "Pearson correlation method",
+            "Spearman correlation method"
           ],
           "date": "2026-10-28",
           "endDate": "",
@@ -793,6 +807,21 @@
           "outcome": null,
           "comment": "",
           "updatedAt": "2026-10-21T09:34:24.599Z"
+        },
+        {
+          "id": "s_lr5yf4ks2x",
+          "name": "Flow synthesis of LNP by SFEE (w/ Yuika)",
+          "notes": "",
+          "conditions": [
+            "Base on Dr.Nui's paper"
+          ],
+          "date": "2026-10-27",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "type": "event",
@@ -1172,8 +1201,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "- Plotting the correlation between slug speed and angle\n- Increasing Q: to increase Ca, observing set-up limitation\n- Implementing sheer force to simulation\n- Finding IFT model that can deal with flow system",
+          "updatedAt": "2026-10-23T02:43:55.554Z"
         }
       ],
       "top": true,
