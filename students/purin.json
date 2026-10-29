@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-27T08:48:26.700Z",
+    "updated": "2026-10-29T04:59:59.683Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -484,22 +484,23 @@
         },
         {
           "id": "s_upm8vg47hl",
-          "name": "High-speed flow #1",
+          "name": "High-viscosity flow #1",
           "notes": "To increase Ca, increasing the signal from IFT",
           "conditions": [
-            "CO2 only 40C 10~20MPa (2x~ Q)"
+            "CO2 only 40C 20MPa (0~75% glycerol)"
           ],
           "date": "2026-10-28",
           "endDate": "",
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-28T22:39:55.165Z"
         },
         {
           "id": "s_6q3ncgwz7o",
-          "name": "HIgh-speed flow data extraction and analysis",
+          "name": "HIgh-viscosity flow data extraction and analysis",
           "notes": "",
           "conditions": [
             "Same as a previous day"
@@ -509,8 +510,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "The pattern matches with one kinetic model",
+          "updatedAt": "2026-10-28T22:40:55.962Z"
         },
         {
           "id": "s_oibo1bog28",
@@ -525,8 +527,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-28T22:38:31.843Z"
         }
       ],
       "type": "research",
@@ -824,6 +827,20 @@
           "outcome": "done",
           "comment": "Yuika learned how to operate SFEE process\nEthyl acetate was extracted from the mixture\nWhat’s left in the container seems to be LNP",
           "updatedAt": "2026-10-27T08:48:20.541Z"
+        },
+        {
+          "id": "s_v45ikr2r5y",
+          "name": "Modification of previous in-situ DLS equipment (repeat)",
+          "notes": "Changing retention time and equipment position to match SFEE design",
+          "conditions": [],
+          "date": "2026-10-27",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-10-27T08:51:27.817Z"
         }
       ],
       "type": "event",
