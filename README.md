@@ -54,37 +54,15 @@ progress, and **each student can only edit their own**.
 - **🔗 Share**: copies or shares the view-only link to the page you're on (the student's dashboard, or all students).
 - **Export** (⇪ tab): a printable report you can save as PDF, a spreadsheet (`.csv`), a calendar file (`.ics` for
   Google or Apple Calendar) and a full data backup (`.json`). You can export one project or everything.
-- **📽 Plan slide for the next meeting** (⇪ Export): one 4:3 PowerPoint slide (`.pptx`) with what you'll do until
-  the next meeting. Pick the timespan (by default until the next entry of your pinned meeting event, or 1 or 2
-  weeks), the projects, and whether to include experiment conditions, notes, days off and the results of past
-  stages. Stages that already took place show their result: a green ✓ (with its comment, if any), a red ✕ with
-  the reason it didn't go as planned, or an orange ! when the result hasn't been recorded yet. Stages are grouped by
-  project with their dates; the preview shows the slide exactly as it will look. If it doesn't fit, notes and extra
-  conditions are left out first, then the latest stages become "+N more"; everything is always in the speaker
-  notes. Private days off show only as their type, and "Only me" ones never appear.
-
-## How it works
-
-```
-index.html            app shell
-assets/app.js         all logic (no dependencies)
-assets/styles.css     styles (light + dark mode, iPhone layout)
-students.json         THE STUDENT LIST: who is in the group, and the admins
-students/<id>.json    each student's data: what visitors see
-```
-
-`students.json` looks like this:
-
-```json
-{
-  "meta": { "title": "Research Progress", "subtitle": "…", "admins": ["purin1999"] },
-  "students": [
-    { "id": "purin", "name": "Purin", "grade": "D2", "github": "purin1999" },
-    { "id": "alice", "name": "Alice", "grade": "M1", "github": "alice-gh", "repo": "alice-gh/research-data" }
-  ]
-}
-```
-
+- **📽 Meeting slides** (⇪ Export): PowerPoint slides (`.pptx`, 4:3) in the lab's meeting style (Arial, navy header
+  bar with the 2×2 icon and slide number, light cards, red key-message bar) with your stages for a chosen period.
+  Quick buttons: *Since last meeting*, *Until next meeting* (from your pinned meeting event), *Next 1 / 2 weeks*.
+  A period that ends today or earlier is titled **"Progression since the last meeting"**, otherwise **"Plan until
+  the next meeting"** (you can type your own title). Stages are grouped by project with their dates, experiment
+  conditions and notes; stages that already took place show their result (green ✓, red ✕ with the reason, or
+  orange ! when not recorded yet). The red bar sums the period up (e.g. "✓ 7 done · 2 planned") and can be edited
+  or left empty. When it doesn't fit, it **continues on more slides** ("(1/2)", "… (continued)"), or choose
+  *Shorten to one slide*. Private days off show only as their type, and "Only me" ones never appear.
 - `id` is the page address (`#/s/purin`) and, by default, the data file name (`students/purin.json`).
 - `grade` (optional) sorts students on the home page and is shown next to their name. The order is `meta.grades`, by default
   `["D3", "D2", "D1", "M2", "M1", "B4"]`; other grades follow, and students without a grade come last.
