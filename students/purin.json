@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-29T05:08:04.997Z",
+    "updated": "2026-10-29T10:02:09.304Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -471,7 +471,7 @@
           "name": "Simulation of sheer force in slug flow",
           "notes": "",
           "conditions": [],
-          "date": "2026-11-02",
+          "date": "2026-11-03",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -528,6 +528,49 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-10-28T22:38:31.843Z"
+        },
+        {
+          "id": "s_0g2sbeflg0",
+          "name": "Slug simulation preparation",
+          "notes": "Installing important software",
+          "conditions": [],
+          "date": "2026-10-30",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_e1p0wih6c6",
+          "name": "High-viscosity flow #2",
+          "notes": "",
+          "conditions": [
+            "CO2 only, 40C, 20MPa, 60% glycerol, Speed sweep"
+          ],
+          "date": "2026-11-04",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_kt6t88iyry",
+          "name": "High-viscosity flow data extraction and analysis",
+          "notes": "",
+          "conditions": [
+            "same as previous day"
+          ],
+          "date": "2026-11-05",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "type": "research",
@@ -1221,6 +1264,19 @@
           "outcome": "done",
           "comment": "- Plotting the correlation between slug speed and angle\n- Increasing Q: to increase Ca, observing set-up limitation\n- Implementing sheer force to simulation\n- Finding IFT model that can deal with flow system",
           "updatedAt": "2026-10-23T02:43:55.554Z"
+        },
+        {
+          "id": "s_hp3dpqjd2j",
+          "name": "Monthly conference",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-11-06",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "top": true,
