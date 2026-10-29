@@ -519,7 +519,7 @@ function openExport() {
   const route = parseRoute();
   const p = route.name === 'project' ? findProject(route.id) : null;
   const slide = `<div class="export-group"><h3>For the next meeting</h3><div class="export-list">
-      <button class="btn" data-act="meeting-slide">📽 Plan slide (.pptx, 4:3) <small>what you'll do until the next meeting</small></button>
+      <button class="btn" data-act="meeting-slide">📽 Meeting slides (.pptx, 4:3) <small>plan until / progress since a meeting</small></button>
     </div></div>`;
   const group = (scope, title) => `
     <div class="export-group"><h3>${esc(title)}</h3><div class="export-list">
@@ -536,32 +536,32 @@ function openExport() {
 }
 
 // ---------------------------------------------------------------- meeting slide
-// One 4:3 PowerPoint slide with what the student plans to do until the next
-// meeting: stages grouped by project, with their dates, experiment conditions
-// and notes. A single layout model drives both the in-app preview and the .pptx,
-// and it steps down in size (then drops notes, then extra conditions, then
-// stages) so the slide never looks cramped.
-const SLIDE = { w: 10, h: 7.5, m: 0.75, top: 1.85, bottom: 6.7, card: 'F3F5F9' };
-const SLIDE_INK = { title: '1E2761', text: '1B2130', muted: '5B6475', faint: '8A93A3' };
-// Results of stages that already took place, in the dashboard's status colours.
+// Slides in the lab's meeting style (4:3, Arial, navy header bar with the 2×2
+// icon, light cards and a red key-message bar) with what the student plans to do
+// until the next meeting, or what they did since the last one. One layout model
+// drives the in-app preview and the .pptx. When it doesn't fit, it continues on
+// more slides, or is shortened to one slide if asked.
+const SLIDE = { w: 10, h: 7.5, x0: 0.4, x1: 9.6, top: 1.3, bottom: 6.65, bottomNoBar: 7.15 };
+const SLIDE_FONT = 'Arial';
+const SLIDE_INK = { navy: '002060', text: '1A1A1A', muted: '595959', faint: '7F7F7F', red: 'C00000', card: 'EEF2F9', icon: 'B4C7E7', white: 'FFFFFF' };
+// Results of stages that already took place: mark + stage name, and a result line.
 const SLIDE_RESULT = {
-  done:    { mark: '✓', label: 'Done as planned', color: '1F8A4C' },
-  failed:  { mark: '✕', label: 'Not as planned', color: 'C2302F' },
-  overdue: { mark: '!', label: 'Result not recorded yet', color: 'B86200' },
+  done:    { mark: '✓', label: 'Done as planned', color: '00B050', line: '00A050' },
+  failed:  { mark: '✕', label: 'Not as planned', color: 'FF0000', line: 'C00000' },
+  overdue: { mark: '!', label: 'Result not recorded yet', color: 'C55A11', line: 'C55A11' },
 };
 const SLIDE_TIERS = [
-  { proj: 16, name: 15, date: 12, detail: 12, rowGap: 0.14, groupGap: 0.45 },
-  { proj: 15, name: 14, date: 11, detail: 11, rowGap: 0.1, groupGap: 0.38 },
+  { proj: 16, name: 14, date: 12, detail: 12, rowGap: 0.1, groupGap: 0.38 }, // ~0.12" between cards
+  { proj: 15, name: 13, date: 11, detail: 11, rowGap: 0.08, groupGap: 0.38 }, // only when shortening to one slide
 ];
 
-// Where the next meeting is: the next entry of a pinned special event (or of an
-// event called "…meeting…") after today.
-function nextMeetingDate() {
+// Meeting dates from the pinned special event (or events called "…meeting…").
+function meetingDates() {
   const events = state.data.projects.filter(isEvent);
   const pick = events.filter((p) => p.top).concat(events.filter((p) => !p.top && /meeting/i.test(p.title)));
   const today = ymd(new Date());
-  const dates = pick.flatMap((p) => p.stages.map((s) => s.date)).filter((d) => d && d > today).sort();
-  return dates[0] ? { date: dates[0], pids: new Set(pick.map((p) => p.id)) } : { date: '', pids: new Set(pick.map((p) => p.id)) };
+  const dates = [...new Set(pick.flatMap((p) => p.stages.map((s) => s.date)).filter(Boolean))].sort();
+  return { next: dates.find((d) => d > today) || '', last: dates.filter((d) => d < today).pop() || '', pids: new Set(pick.map((p) => p.id)) };
 }
 
 function slideDateLabel(s) {
@@ -574,19 +574,18 @@ function slideDateLabel(s) {
   return s.allDay ? day(a) : `${day(a)}\n${s.start}${s.end ? `–${s.end}` : ''}`;
 }
 
-// What goes on the slide, before any layout.
+// What goes on the slides, before any layout.
 function slideContent({ from, to, pids, leave }) {
   const a = parseYmd(from); const b = addDays(parseYmd(to), 1);
   const inRange = (s) => { const r = stageRange(s); return r && r.start < b && r.end >= a; };
   const groups = [];
   for (const p of byColor()) {
     if (!pids.has(p.id) || isLeave(p)) continue;
-    const items = p.stages.filter(inRange).sort((x, y) => stageRange(x).start - stageRange(y).start)
-      .map((s) => {
-        const st = statusOf(s);
-        const result = s.outcome || (st === 'overdue' ? 'overdue' : null);
-        return { s, date: slideDateLabel(s), name: s.name, conds: s.conditions.filter(Boolean), notes: s.notes.trim(), result, comment: (s.comment || '').trim() };
-      });
+    const items = p.stages.filter(inRange).sort((x, y) => stageRange(x).start - stageRange(y).start).map((s) => {
+      const st = statusOf(s);
+      const result = s.outcome || (st === 'overdue' ? 'overdue' : null);
+      return { s, date: slideDateLabel(s), name: s.name, conds: s.conditions.filter(Boolean), notes: s.notes.trim(), result, comment: (s.comment || '').trim() };
+    });
     if (items.length) groups.push({ p, items, first: stageRange(items[0].s).start });
   }
   groups.sort((x, y) => x.first - y.first);
@@ -596,9 +595,17 @@ function slideContent({ from, to, pids, leave }) {
   return { groups, away };
 }
 
-// Rough text height (inches) for a box of the given width, used to fit the slide.
+// The default key message for the red bar: how the period went / what is planned.
+function slideSummary(content, opts) {
+  const n = { done: 0, failed: 0, overdue: 0, planned: 0 };
+  for (const g of content.groups) for (const it of g.items) n[opts.results && it.result ? it.result : 'planned']++;
+  const parts = [n.done && `✓ ${n.done} done`, n.failed && `✕ ${n.failed} not as planned`, n.overdue && `${n.overdue} without a result yet`, n.planned && `${n.planned} planned`].filter(Boolean);
+  return parts.length ? parts.join('  ·  ') : 'Nothing scheduled in this period';
+}
+
+// Rough text height for a box of the given width (Arial is wide: be generous).
 function textLines(text, widthIn, pt) {
-  const perLine = Math.max(8, Math.floor((widthIn * 72) / (pt * 0.5)));
+  const perLine = Math.max(8, Math.floor((widthIn * 72) / (pt * 0.55)));
   return String(text).split('\n').reduce((n, line) => {
     const w = [...line].reduce((acc, ch) => acc + (ch.charCodeAt(0) > 0x2e80 ? 2 : 1), 0);
     return n + Math.max(1, Math.ceil(w / perLine));
@@ -606,109 +613,148 @@ function textLines(text, widthIn, pt) {
 }
 const lineH = (pt) => (pt * 1.25) / 72;
 
-// Lays the content out; returns positioned boxes plus what had to be left out.
-function slideLayout(content, opts, meta) {
-  const { m, top, bottom, w } = SLIDE;
-  const awayText = content.away.length ? `Away: ${content.away.join(' · ')}` : '';
-  const awayH = (t) => (awayText ? textLines(awayText, w - 2 * m, t.detail) * lineH(t.detail) : 0);
-  const tryLayout = (t, { notes, maxConds, reserve = 0, until = Infinity }) => {
-    const limit = bottom - reserve - (awayText ? awayH(t) + 0.1 : 0);
-    const boxes = []; let y = top; let shown = 0; let total = 0; let cut = false;
-    const dateX = m + 0.32; const dateW = 1.3; const nameX = dateX + dateW + 0.15; const nameW = w - m - nameX;
-    for (const g of content.groups) {
-      total += g.items.length;
-      if (cut) continue;
-      const head = lineH(t.proj);
-      if (y + head + lineH(t.name) > limit) { cut = true; continue; }
-      const groupStart = boxes.length; const yStart = y;
-      boxes.push({ kind: 'dot', x: m, y: y + head / 2 - 0.08, w: 0.16, h: 0.16, color: g.p.color.replace('#', '') });
-      boxes.push({ kind: 'text', x: m + 0.32, y, w: w - 2 * m - 0.32, h: head, text: g.p.title, pt: t.proj, bold: true, color: SLIDE_INK.title });
-      y += head + 0.06;
-      let placed = 0;
-      for (const it of g.items) {
-        if (stageRange(it.s).start > until) continue; // later stages are summed up below
-        const detail = [];
-        if (opts.conds && it.conds.length) {
-          const cs = it.conds.slice(0, maxConds).map((c, i) => `Condition ${i + 1}: ${c}`);
-          if (it.conds.length > maxConds) cs.push(`+${it.conds.length - maxConds} more condition${it.conds.length - maxConds > 1 ? 's' : ''}`);
-          detail.push(...cs);
-        }
-        const noteText = opts.notes && notes && it.notes ? it.notes : '';
-        const res = opts.results && it.result ? SLIDE_RESULT[it.result] : null;
-        // A green ✓ says "done" on its own; a result line is added only when it tells more.
-        const resLine = res && (it.result !== 'done' || it.comment);
-        const resText = resLine ? `${res.label}${it.comment ? `: ${it.comment}` : ''}` : '';
-        const resH = resText ? textLines(resText, nameW, t.detail) * lineH(t.detail) : 0;
-        const nameText = `${res ? `${res.mark} ` : ''}${it.name}`;
-        const nameH = textLines(nameText, nameW, t.name) * lineH(t.name);
-        const detH = detail.length ? textLines(detail.join('\n'), nameW, t.detail) * lineH(t.detail) : 0;
-        const noteH = noteText ? textLines(noteText, nameW, t.detail) * lineH(t.detail) : 0;
-        const dateH = textLines(it.date, dateW, t.date) * lineH(t.date);
-        const h = Math.max(dateH, nameH + (resH ? resH + 0.03 : 0) + (detH ? detH + 0.03 : 0) + (noteH ? noteH + 0.03 : 0));
-        if (y + h > limit) { cut = true; break; }
-        boxes.push({ kind: 'text', x: dateX, y: y + 0.02, w: dateW, h: dateH, text: it.date, pt: t.date, bold: true, color: SLIDE_INK.muted });
-        let yy = y;
-        boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: nameH, text: nameText, pt: t.name, bold: true, color: SLIDE_INK.text,
-          runs: res ? [{ text: `${res.mark} `, color: res.color }, { text: it.name }] : null });
-        yy += nameH + 0.03;
-        if (resH) { boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: resH, text: resText, pt: t.detail, color: res.color, runs: [{ text: res.label, bold: true }, ...(it.comment ? [{ text: `: ${it.comment}` }] : [])] }); yy += resH + 0.03; }
-        if (detH) { boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: detH, text: detail.join('\n'), pt: t.detail, color: SLIDE_INK.muted }); yy += detH + 0.03; }
-        if (noteH) boxes.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: noteH, text: noteText, pt: t.detail, italic: true, color: SLIDE_INK.faint });
-        y += h + t.rowGap; shown++; placed++;
+// Places the projects and their stages on as many pages as needed (paginate), or
+// on one page, stopping where it is full. Boxes are in inches on a 10 × 7.5 slide.
+function layoutPages(content, opts, t, { paginate, notes = true, maxConds = 99, until = Infinity, reserve = 0, withAway = true }) {
+  const bottom = (opts.bar ? SLIDE.bottom : SLIDE.bottomNoBar) - reserve;
+  const cardX = SLIDE.x0; const cardW = SLIDE.x1 - SLIDE.x0;
+  const dotX = cardX + 0.2; const dateX = cardX + 0.5; const dateW = 1.3; const nameX = dateX + dateW + 0.15; const nameW = SLIDE.x1 - 0.2 - nameX;
+  const pages = []; let page; let y;
+  const newPage = () => { page = { boxes: [], items: [] }; pages.push(page); y = SLIDE.top; };
+  newPage();
+  let shown = 0; let total = 0; let cut = false;
+  for (const g of content.groups) {
+    total += g.items.length;
+    if (cut) continue;
+    let card = null; let placed = 0;
+    const head = lineH(t.proj) + 0.06;
+    const openCard = () => {
+      card = { page, idx: page.boxes.length, yStart: y };
+      page.boxes.push({ kind: 'rect', x: dotX, y: y + lineH(t.proj) / 2 - 0.08, w: 0.16, h: 0.16, color: g.p.color.replace('#', ''), round: 1 });
+      page.boxes.push({ kind: 'text', x: dateX, y, w: SLIDE.x1 - 0.2 - dateX, h: lineH(t.proj), pt: t.proj, bold: true, color: SLIDE_INK.navy,
+        text: placed ? `${g.p.title} (continued)` : g.p.title });
+      y += head;
+    };
+    const closeCard = () => {
+      if (!card) return;
+      card.page.boxes.splice(card.idx, 0, { kind: 'rect', x: cardX, y: card.yStart - 0.13, w: cardW, h: y - t.rowGap - card.yStart + 0.26, color: SLIDE_INK.card, round: 0.08 });
+      card = null; y += t.groupGap - t.rowGap;
+    };
+    for (const it of g.items) {
+      if (stageRange(it.s).start > until) continue; // later stages are summed up by the caller
+      const res = opts.results && it.result ? SLIDE_RESULT[it.result] : null;
+      // A green ✓ says "done" on its own; a result line is added only when it tells more.
+      const resText = res && (it.result !== 'done' || it.comment) ? `${res.label}${it.comment ? `: ${it.comment}` : ''}` : '';
+      const conds = opts.conds ? it.conds.slice(0, maxConds).map((c, i) => `Condition ${i + 1}: ${c}`) : [];
+      if (opts.conds && it.conds.length > maxConds) conds.push(`+${it.conds.length - maxConds} more condition${it.conds.length - maxConds > 1 ? 's' : ''}`);
+      const noteText = opts.notes && notes && it.notes ? it.notes : '';
+      const nameText = `${res ? `${res.mark} ` : ''}${it.name}`;
+      const hh = (txt, pt) => (txt ? textLines(txt, nameW, pt) * lineH(pt) : 0);
+      const nameH = hh(nameText, t.name); const resH = hh(resText, t.detail); const condH = hh(conds.join('\n'), t.detail); const noteH = hh(noteText, t.detail);
+      const dateH = textLines(it.date, dateW, t.date) * lineH(t.date);
+      const h = Math.max(dateH, nameH + [resH, condH, noteH].reduce((acc, v) => acc + (v ? v + 0.03 : 0), 0));
+      if (y + (card ? 0 : head) + h > bottom) {
+        if (!paginate) { cut = true; break; }
+        if (card || page.items.length) { closeCard(); newPage(); }
       }
-      if (!placed) { boxes.length = groupStart; y = yStart; continue; } // no project heading without stages
-      // Each project sits on a soft rounded card, drawn underneath its text.
-      boxes.splice(groupStart, 0, { kind: 'card', x: m - 0.2, y: yStart - 0.14, w: w - 2 * m + 0.4, h: y - t.rowGap - yStart + 0.28, color: SLIDE.card });
-      y += t.groupGap - t.rowGap;
+      if (!card) openCard();
+      const P = page.boxes;
+      P.push({ kind: 'text', x: dateX, y: y + 0.02, w: dateW, h: dateH, text: it.date, pt: t.date, bold: true, color: SLIDE_INK.muted });
+      let yy = y;
+      P.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: nameH, text: nameText, pt: t.name, bold: true, color: SLIDE_INK.text,
+        runs: res ? [{ text: `${res.mark} `, color: res.color }, { text: it.name, color: it.result === 'overdue' ? SLIDE_INK.text : res.color }] : null });
+      yy += nameH + 0.03;
+      if (resH) { P.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: resH, text: resText, pt: t.detail, color: res.line, runs: [{ text: res.label, bold: true }, ...(it.comment ? [{ text: `: ${it.comment}` }] : [])] }); yy += resH + 0.03; }
+      if (condH) { P.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: condH, text: conds.join('\n'), pt: t.detail, color: SLIDE_INK.muted }); yy += condH + 0.03; }
+      if (noteH) P.push({ kind: 'text', x: nameX, y: yy, w: nameW, h: noteH, text: noteText, pt: t.detail, italic: true, color: SLIDE_INK.faint });
+      page.items.push({ g, it });
+      y += h + t.rowGap; shown++; placed++;
     }
-    return { boxes, shown, total, cut, y, t };
-  };
-  // The "Away" line goes after the projects (and after "+N more", if any).
-  const addAway = (r, yAt) => { if (awayText) r.boxes.push({ kind: 'text', x: m, y: yAt, w: w - 2 * m, h: awayH(r.t), text: awayText, pt: r.t.detail, color: SLIDE_INK.muted }); };
-  // Try the roomiest version first, then make room step by step; as a last
-  // resort keep what fits and say how many stages were left out.
-  const steps = [];
-  for (const t of SLIDE_TIERS) steps.push({ t, notes: true, maxConds: 99, note: '' });
-  steps.push({ t: SLIDE_TIERS[1], notes: false, maxConds: 99, note: 'Notes were left out to fit one slide (they are in the speaker notes).' });
-  steps.push({ t: SLIDE_TIERS[1], notes: false, maxConds: 2, note: 'Notes and some conditions were left out to fit one slide (all of them are in the speaker notes).' });
-  let res;
-  for (const st of steps) { res = { ...tryLayout(st.t, st), note: st.note }; if (!res.cut) break; }
-  if (res.cut) {
-    // Keep the nearest stages of every project and leave out the latest ones.
-    const all = content.groups.flatMap((g) => g.items.map((it) => +stageRange(it.s).start));
-    const starts = [...new Set(all)].sort((x, y) => y - x);
-    for (const until of starts) {
-      res = { ...tryLayout(SLIDE_TIERS[1], { notes: false, maxConds: 2, reserve: 0.4, until }), until };
-      if (!res.cut) break;
-    }
-    const left = res.total - res.shown;
-    let yAt = res.y + 0.02;
-    if (left > 0) {
-      const firstLeft = Math.min(...all.filter((x) => x > res.until)); // the earliest stage left out
-      const fromTxt = Number.isFinite(firstLeft) ? ` from ${fmt(new Date(firstLeft), { day: 'numeric', month: 'short' })}` : '';
-      res.boxes.push({ kind: 'text', x: m + 0.32, y: yAt, w: 7, h: lineH(11), text: `+${left} more stage${left > 1 ? 's' : ''}${fromTxt} — see the dashboard`, pt: 11, italic: true, color: SLIDE_INK.faint });
-      yAt += lineH(11) + 0.12;
-    }
-    addAway(res, yAt);
-    res.note = `Too much for one slide: ${left ? `the ${left} latest stage${left > 1 ? 's were' : ' was'} summed up as “+${left} more”, and ` : ''}notes and some conditions were left out (all of them are in the speaker notes). Try a shorter timespan or fewer projects.`;
-  } else addAway(res, res.y + 0.02);
-  const head = [
-    { kind: 'text', x: SLIDE.m, y: 0.5, w: SLIDE.w - 2 * SLIDE.m, h: 0.7, text: meta.title, pt: 30, bold: true, color: SLIDE_INK.title },
-    { kind: 'text', x: SLIDE.m, y: 1.15, w: SLIDE.w - 2 * SLIDE.m, h: 0.35, text: meta.subtitle, pt: 14, color: SLIDE_INK.muted },
-  ];
-  const foot = { kind: 'text', x: SLIDE.m, y: 7.0, w: SLIDE.w - 2 * SLIDE.m, h: 0.25, text: meta.footer, pt: 9, color: SLIDE_INK.faint, align: 'right' };
-  const empty = !content.groups.length && !content.away.length
-    ? [{ kind: 'text', x: SLIDE.m, y: SLIDE.top, w: SLIDE.w - 2 * SLIDE.m, h: 0.4, text: 'Nothing planned in this period.', pt: 16, italic: true, color: SLIDE_INK.muted }] : [];
-  return { boxes: [...head, ...res.boxes, ...empty, foot], note: res.note };
+    closeCard();
+  }
+  if (withAway && content.away.length && !cut) {
+    const text = `Away: ${content.away.join(' · ')}`;
+    const h = textLines(text, SLIDE.x1 - SLIDE.x0, t.detail) * lineH(t.detail);
+    if (y + h > bottom) { if (paginate) newPage(); else cut = true; }
+    if (!cut) page.boxes.push({ kind: 'text', x: SLIDE.x0 + 0.1, y, w: SLIDE.x1 - SLIDE.x0 - 0.2, h, text, pt: t.detail, color: SLIDE_INK.muted });
+  }
+  return { pages, shown, total, cut, y };
 }
 
-function slidePreviewHtml(layout) {
+// Shortens the content to one slide: smaller text, then no notes, then at most
+// two conditions per stage, then the latest stages summed up as "+N more".
+function layoutOneSlide(content, opts) {
+  const steps = [
+    { t: SLIDE_TIERS[0], notes: true, maxConds: 99, note: '' },
+    { t: SLIDE_TIERS[1], notes: true, maxConds: 99, note: 'Slightly smaller text to fit one slide.' },
+    { t: SLIDE_TIERS[1], notes: false, maxConds: 99, note: 'Notes were left out to fit one slide (they are in the speaker notes).' },
+    { t: SLIDE_TIERS[1], notes: false, maxConds: 2, note: 'Notes and some conditions were left out to fit one slide (all of them are in the speaker notes).' },
+  ];
+  for (const st of steps) {
+    const r = layoutPages(content, opts, st.t, { ...st, paginate: false });
+    if (!r.cut) return { pages: r.pages, note: st.note };
+  }
+  const t = SLIDE_TIERS[1];
+  const awayText = content.away.length ? `Away: ${content.away.join(' · ')}` : '';
+  const awayH = awayText ? textLines(awayText, SLIDE.x1 - SLIDE.x0, t.detail) * lineH(t.detail) + 0.08 : 0;
+  const all = content.groups.flatMap((g) => g.items.map((it) => +stageRange(it.s).start));
+  let r; let until = -Infinity;
+  for (const u of [...new Set(all)].sort((x, y) => y - x)) {
+    r = layoutPages(content, opts, t, { paginate: false, notes: false, maxConds: 2, until: u, reserve: lineH(11) + 0.12 + awayH, withAway: false });
+    until = u;
+    if (!r.cut) break;
+  }
+  const page = r.pages[0]; let y = r.y;
+  const left = r.total - r.shown;
+  if (left > 0) {
+    const first = Math.min(...all.filter((x) => x > until));
+    const fromTxt = Number.isFinite(first) ? ` from ${fmt(new Date(first), { day: 'numeric', month: 'short' })}` : '';
+    page.boxes.push({ kind: 'text', x: SLIDE.x0 + 0.5, y, w: 7, h: lineH(11), text: `+${left} more stage${left > 1 ? 's' : ''}${fromTxt} — see the dashboard`, pt: 11, italic: true, color: SLIDE_INK.faint });
+    y += lineH(11) + 0.12;
+  }
+  if (awayText) page.boxes.push({ kind: 'text', x: SLIDE.x0 + 0.1, y, w: SLIDE.x1 - SLIDE.x0 - 0.2, h: awayH, text: awayText, pt: t.detail, color: SLIDE_INK.muted });
+  return { pages: r.pages, note: `Too much for one slide: ${left ? `the ${left} latest stage${left > 1 ? 's were' : ' was'} summed up as “+${left} more”, and ` : ''}notes and some conditions were left out (all of them are in the speaker notes). Choose “Continue on more slides” to keep everything.` };
+}
+
+// The parts every slide shares: navy header bar with the 2×2 icon, title and
+// slide number; the period line; the red key-message bar.
+function slideChrome(meta, i, n) {
+  const sq = (x, y, color) => ({ kind: 'rect', x, y, w: 0.197, h: 0.197, color });
+  const boxes = [
+    { kind: 'rect', x: 0, y: 0, w: SLIDE.w, h: 0.6, color: SLIDE_INK.navy },
+    sq(0.108, 0.097, SLIDE_INK.icon), sq(0.334, 0.097, SLIDE_INK.white), sq(0.108, 0.317, SLIDE_INK.icon), sq(0.334, 0.317, SLIDE_INK.icon),
+    { kind: 'text', x: 0.56, y: 0.07, w: 7.85, h: 0.43, pt: 24, bold: true, color: SLIDE_INK.white, valign: 'middle', text: `${meta.title}${n > 1 ? ` (${i + 1}/${n})` : ''}` },
+    { kind: 'slidenum', x: 9.29, y: 0.1, w: 0.62, h: 0.4, pt: 18, color: SLIDE_INK.white, text: String(i + 1) },
+    { kind: 'text', x: 0.3, y: 0.68, w: 9.4, h: 0.42, pt: 18, align: 'center', valign: 'middle', color: SLIDE_INK.text, text: `${meta.name} · Period: ${meta.range}`,
+      runs: [{ text: meta.name, bold: true, color: SLIDE_INK.navy }, { text: '   ' }, { text: 'Period: ', bold: true, color: SLIDE_INK.red }, { text: meta.range }] },
+  ];
+  if (meta.bar) boxes.push({ kind: 'rect', x: 0.4, y: 6.82, w: 9.2, h: 0.5, color: SLIDE_INK.red, round: 0.1, text: meta.bar, pt: 18, textColor: SLIDE_INK.white });
+  return boxes;
+}
+
+function buildSlides(content, opts, meta) {
+  const res = opts.oneSlide ? layoutOneSlide(content, opts) : { ...layoutPages(content, opts, SLIDE_TIERS[0], { paginate: true }), note: '' };
+  const pages = res.pages;
+  if (!content.groups.length && !content.away.length) pages[0].boxes.push({ kind: 'text', x: SLIDE.x0 + 0.1, y: SLIDE.top, w: 8, h: 0.4, text: 'Nothing scheduled in this period.', pt: 16, italic: true, color: SLIDE_INK.muted });
+  pages.forEach((pg, i) => { pg.boxes = [...slideChrome(meta, i, pages.length), ...pg.boxes]; });
+  const note = res.note || (pages.length > 1 ? `Nothing left out: it continues on ${pages.length} slides.` : 'Preview of the slide (4:3). Full notes and conditions also go into the speaker notes.');
+  return { pages, note };
+}
+
+function slidePreviewHtml(built) {
   const pct = (v, of) => `${(v / of) * 100}%`;
-  return `<div class="slide-preview" aria-label="Slide preview">${layout.boxes.map((b) => (b.kind === 'card'
-    ? `<span style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};height:${pct(b.h, SLIDE.h)};background:#${b.color};border-radius:1.2cqw"></span>`
-    : b.kind === 'dot'
-    ? `<span style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};height:${pct(b.h, SLIDE.h)};background:#${esc(b.color)};border-radius:50%"></span>`
-    : `<div style="left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};font-size:${(b.pt * 0.1389).toFixed(3)}cqw;color:#${b.color};${b.bold ? 'font-weight:700;' : ''}${b.italic ? 'font-style:italic;' : ''}${b.align ? `text-align:${b.align};` : ''}">${b.runs ? b.runs.map((r) => `<span style="${r.color ? `color:#${r.color};` : ''}${r.bold ? 'font-weight:700;' : ''}">${esc(r.text)}</span>`).join('') : esc(b.text)}</div>`)).join('')}</div>`;
+  const fs = (pt) => `${(pt * 0.1389).toFixed(3)}cqw`;
+  const pos = (b) => `left:${pct(b.x, SLIDE.w)};top:${pct(b.y, SLIDE.h)};width:${pct(b.w, SLIDE.w)};`;
+  const runs = (b) => (b.runs ? b.runs.map((r) => `<span style="${r.color ? `color:#${r.color};` : ''}${r.bold ? 'font-weight:700;' : r.bold === false ? 'font-weight:400;' : ''}">${esc(r.text)}</span>`).join('') : esc(b.text));
+  const box = (b) => {
+    if (b.kind === 'rect') {
+      const radius = b.round === 1 ? '50%' : b.round ? `${(b.round * 10).toFixed(2)}cqw` : '0';
+      return `<span class="${b.text ? 'mid' : ''}" style="${pos(b)}height:${pct(b.h, SLIDE.h)};background:#${b.color};border-radius:${radius};${b.text ? `font-size:${fs(b.pt)};color:#${b.textColor};justify-content:center;text-align:center;` : ''}">${b.text ? esc(b.text) : ''}</span>`;
+    }
+    const mid = b.valign === 'middle';
+    return `<div class="${mid ? 'mid' : ''}" style="${pos(b)}${mid ? `height:${pct(b.h, SLIDE.h)};` : ''}font-size:${fs(b.pt)};color:#${b.color};${b.bold ? 'font-weight:700;' : ''}${b.italic ? 'font-style:italic;' : ''}${b.kind === 'slidenum' ? 'text-align:right;justify-content:flex-end;' : b.align ? `text-align:${b.align};justify-content:center;` : ''}">${runs(b)}</div>`;
+  };
+  return built.pages.map((pg, i) => `${built.pages.length > 1 ? `<div class="muted small" style="margin:${i ? '12px' : '0'} 0 4px">Slide ${i + 1} of ${built.pages.length}</div>` : ''}<div class="slide-preview" aria-label="Slide ${i + 1} preview">${pg.boxes.map(box).join('')}</div>`).join('');
 }
 
 let pptxLoading = null;
@@ -724,85 +770,121 @@ function loadPptx() {
   return pptxLoading;
 }
 
-async function writeSlide(layout, meta, notesText) {
+function slideNotes(page) {
+  const out = []; let last = null;
+  for (const { g, it } of page.items) {
+    if (g !== last) { out.push(`${out.length ? '\n' : ''}${g.p.title}`); last = g; }
+    out.push(`- ${it.date.replace('\n', ' ')}: ${it.name}${it.result ? `\n    Result: ${SLIDE_RESULT[it.result].label}${it.comment ? ` (${it.comment})` : ''}` : ''}${it.conds.map((c, i) => `\n    Condition ${i + 1}: ${c}`).join('')}${it.notes ? `\n    Note: ${it.notes}` : ''}`);
+  }
+  return out.join('\n');
+}
+
+async function writeSlides(built, meta, fullNotes) {
   await loadPptx();
   const pres = new window.PptxGenJS();
   pres.layout = 'LAYOUT_4x3'; // 10" × 7.5", the lab's slide size
-  pres.title = meta.title; pres.author = meta.author;
-  pres.theme = { headFontFace: 'Calibri', bodyFontFace: 'Calibri' };
-  const sl = pres.addSlide();
-  sl.background = { color: 'FFFFFF' };
-  for (const b of layout.boxes) {
-    if (b.kind === 'card') { sl.addShape(pres.ShapeType.roundRect, { x: b.x, y: b.y, w: b.w, h: b.h, rectRadius: 0.12, fill: { color: b.color }, line: { color: b.color, width: 0 } }); continue; }
-    if (b.kind === 'dot') { sl.addShape(pres.ShapeType.ellipse, { x: b.x, y: b.y, w: b.w, h: b.h, fill: { color: b.color }, line: { color: b.color, width: 0 } }); continue; }
-    const body = b.runs ? b.runs.map((r) => ({ text: r.text, options: { ...(r.color ? { color: r.color } : {}), ...(r.bold != null ? { bold: r.bold } : {}) } })) : b.text;
-    sl.addText(body, { x: b.x, y: b.y, w: b.w, h: Math.max(b.h, lineH(b.pt)), fontFace: 'Calibri', fontSize: b.pt, bold: !!b.bold, italic: !!b.italic, color: b.color, align: b.align || 'left', valign: 'top', margin: 0, isTextBox: true, fit: 'none', paraSpaceAfter: 0 });
-  }
-  if (notesText) sl.addNotes(notesText);
+  pres.title = meta.title; pres.author = meta.name;
+  pres.theme = { headFontFace: SLIDE_FONT, bodyFontFace: SLIDE_FONT };
+  built.pages.forEach((pg, i) => {
+    const sl = pres.addSlide();
+    sl.background = { color: 'FFFFFF' };
+    for (const b of pg.boxes) {
+      if (b.kind === 'slidenum') { sl.slideNumber = { x: b.x, y: b.y, w: b.w, h: b.h, fontFace: SLIDE_FONT, fontSize: b.pt, color: b.color, align: 'right' }; continue; }
+      if (b.kind === 'rect') {
+        const shape = b.round === 1 ? pres.ShapeType.ellipse : b.round ? pres.ShapeType.roundRect : pres.ShapeType.rect;
+        const o = { x: b.x, y: b.y, w: b.w, h: b.h, fill: { color: b.color }, line: { color: b.color, width: 0 }, ...(b.round && b.round !== 1 ? { rectRadius: b.round } : {}) };
+        if (b.text) sl.addText(b.text, { ...o, shape, fontFace: SLIDE_FONT, fontSize: b.pt, color: b.textColor, align: 'center', valign: 'middle', margin: 0 });
+        else sl.addShape(shape, o);
+        continue;
+      }
+      const body = b.runs ? b.runs.map((r) => ({ text: r.text, options: { ...(r.color ? { color: r.color } : {}), ...(r.bold != null ? { bold: r.bold } : {}) } })) : b.text;
+      sl.addText(body, { x: b.x, y: b.y, w: b.w, h: Math.max(b.h, lineH(b.pt)), fontFace: SLIDE_FONT, fontSize: b.pt, bold: !!b.bold, italic: !!b.italic, color: b.color, align: b.align || 'left', valign: b.valign || 'top', margin: 0, isTextBox: true, fit: 'none', paraSpaceAfter: 0 });
+    }
+    const notes = fullNotes || slideNotes(pg);
+    if (notes) sl.addNotes(notes);
+  });
   return pres.write({ outputType: 'blob' });
 }
 
 function openMeetingSlide() {
-  const meet = nextMeetingDate();
+  const meet = meetingDates();
   const today = ymd(new Date());
   const projects = byColor().filter((p) => (isResearch(p) && p.status === 'ongoing') || isEvent(p));
   const name = state.rec?.entry.name || state.data.meta.title;
-  const st = { from: today, to: meet.date || ymd(addDays(new Date(), 7)), conds: true, notes: true, leave: true, results: true, pids: new Set(projects.filter((p) => !meet.pids.has(p.id)).map((p) => p.id)), title: meet.date ? 'Plan until the next meeting' : 'Plan for the coming week' };
+  const st = { from: today, to: meet.next || ymd(addDays(new Date(), 7)), conds: true, notes: true, leave: true, results: true, oneSlide: false,
+    pids: new Set(projects.filter((p) => !meet.pids.has(p.id)).map((p) => p.id)), titleEdited: false, barEdited: false, title: '', bar: '' };
+  const day = (d) => fmt(parseYmd(d), { weekday: 'short', day: 'numeric', month: 'short' });
   const quick = [
-    ...(meet.date ? [[meet.date, `Until next meeting (${fmt(parseYmd(meet.date), { weekday: 'short', day: 'numeric', month: 'short' })})`]] : []),
-    [ymd(addDays(new Date(), 7)), '1 week'], [ymd(addDays(new Date(), 14)), '2 weeks'],
+    ...(meet.last ? [[meet.last, today, `Since last meeting (${day(meet.last)})`]] : []),
+    ...(meet.next ? [[today, meet.next, `Until next meeting (${day(meet.next)})`]] : []),
+    [today, ymd(addDays(new Date(), 7)), 'Next 1 week'], [today, ymd(addDays(new Date(), 14)), 'Next 2 weeks'],
   ];
+  // An interval that ends today or earlier reports progress; otherwise it is a plan.
+  const autoTitle = () => (st.to <= today ? 'Progression since the last meeting' : 'Plan until the next meeting');
   const range = () => { const a = parseYmd(st.from); const b = parseYmd(st.to); return a.getFullYear() === b.getFullYear() ? `${fmt(a, { weekday: 'short', day: 'numeric', month: 'short' })} – ${fmtDay(b)}` : `${fmtDay(a)} – ${fmtDay(b)}`; };
-  const meta = () => ({ title: st.title.trim() || 'Plan', subtitle: `${name} · ${range()}`, footer: `Research Progress · ${fmtDay(new Date())}`, author: name });
-  const build = () => slideLayout(slideContent(st), st, meta());
+  const meta = () => ({ title: st.title.trim() || autoTitle(), name, range: range(), bar: st.bar.trim() });
+  const build = () => buildSlides(slideContent(st), st, meta());
   openModal({
-    title: 'Plan slide for the next meeting',
+    title: 'Meeting slides',
     body: `<form id="ms-form" autocomplete="off">
       <div class="grid2">
         <label class="field"><span>From</span><input type="date" name="from" value="${st.from}"></label>
         <label class="field"><span>Until (inclusive)</span><input type="date" name="to" value="${st.to}"></label>
       </div>
-      <div class="row" style="margin:-4px 0 12px">${quick.map(([d, l]) => `<button type="button" class="btn sm" data-to="${d}">${esc(l)}</button>`).join('')}</div>
-      <label class="field"><span>Slide title</span><input type="text" name="title" value="${esc(st.title)}"></label>
+      <div class="row" style="margin:-4px 0 12px">${quick.map(([f, t, l]) => `<button type="button" class="btn sm" data-from="${f}" data-to="${t}">${esc(l)}</button>`).join('')}</div>
+      <label class="field"><span>Slide title</span><input type="text" name="title"></label>
+      <label class="field"><span>Key message (red bar at the bottom — leave empty for none)</span><input type="text" name="bar"></label>
       <div class="field"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">Include</span>
         <div class="ms-checks">${projects.map((p) => `<label class="check"><input type="checkbox" name="pid" value="${esc(p.id)}" ${st.pids.has(p.id) ? 'checked' : ''}><span class="dot" style="background:${esc(p.color)}"></span>${isEvent(p) ? '📌 ' : ''}${esc(p.title)}</label>`).join('')}
-          <label class="check"><input type="checkbox" name="leave" ${st.leave ? 'checked' : ''}>🏖 Days off</label>
+          <label class="check"><input type="checkbox" name="leave" checked>🏖 Days off</label>
           <label class="check"><input type="checkbox" name="conds" checked>Experiment conditions</label>
           <label class="check"><input type="checkbox" name="notes" checked>Notes</label>
           <label class="check"><input type="checkbox" name="results" checked>Results of past stages</label></div></div>
+      <div class="field"><span class="muted small" style="font-weight:600;display:block;margin-bottom:6px">If it doesn't fit on one slide</span>
+        <div class="seg" role="radiogroup"><label><input type="radio" name="fit" value="more" checked hidden><span>Continue on more slides</span></label><label><input type="radio" name="fit" value="one" hidden><span>Shorten to one slide</span></label></div></div>
       <div id="ms-preview"></div>
       <p class="help" id="ms-note" style="margin-top:8px"></p>
     </form>`,
     footer: '<button class="btn" data-close>Cancel</button><button class="btn primary" type="submit" form="ms-form">⬇ Download .pptx</button>',
     onMount(m) {
       const form = $('#ms-form', m);
-      const sync = () => {
+      const sync = (e) => {
+        if (e?.target === form.title) st.titleEdited = !!form.title.value.trim();
+        if (e?.target === form.bar) st.barEdited = true;
         st.from = form.from.value || today; st.to = form.to.value || st.from;
         if (st.to < st.from) st.to = st.from;
-        st.title = form.title.value; st.conds = form.conds.checked; st.notes = form.notes.checked; st.leave = form.leave.checked; st.results = form.results.checked;
+        st.conds = form.conds.checked; st.notes = form.notes.checked; st.leave = form.leave.checked; st.results = form.results.checked;
+        st.oneSlide = form.fit.value === 'one';
         st.pids = new Set($$('input[name=pid]:checked', form).map((x) => x.value));
-        const lay = build();
-        $('#ms-preview', m).innerHTML = slidePreviewHtml(lay);
-        $('#ms-note', m).textContent = lay.note || 'Preview of the slide (4:3). Full notes and conditions also go into the speaker notes.';
+        // Title and key message follow the choices until they are edited by hand.
+        if (!st.titleEdited) form.title.value = autoTitle();
+        st.title = form.title.value;
+        if (!st.barEdited) form.bar.value = slideSummary(slideContent(st), st);
+        st.bar = form.bar.value;
+        $$('.seg label', form).forEach((l) => l.classList.toggle('on', l.querySelector('input').checked));
+        const built = build();
+        $('#ms-preview', m).innerHTML = slidePreviewHtml(built);
+        $('#ms-note', m).textContent = built.note;
       };
       form.addEventListener('input', sync); form.addEventListener('change', sync);
-      $$('[data-to]', m).forEach((b) => b.addEventListener('click', () => { form.to.value = b.dataset.to; sync(); }));
+      $$('[data-to]', m).forEach((b) => b.addEventListener('click', () => { form.from.value = b.dataset.from; form.to.value = b.dataset.to; sync(); }));
       sync();
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = $('.modal-foot [type=submit]', m); btn.disabled = true; btn.textContent = 'Making slide…';
+        const btn = $('.modal-foot [type=submit]', m); btn.disabled = true; btn.textContent = 'Making slides…';
         try {
-          const content = slideContent(st);
-          const notes = content.groups.map((g) => `${g.p.title}\n${g.items.map((it) => `- ${it.date.replace('\n', ' ')}: ${it.name}${it.result ? `\n    Result: ${SLIDE_RESULT[it.result].label}${it.comment ? ` (${it.comment})` : ''}` : ''}${it.conds.map((c, i) => `\n    Condition ${i + 1}: ${c}`).join('')}${it.notes ? `\n    Note: ${it.notes}` : ''}`).join('\n')}`).join('\n\n');
-          const blob = await writeSlide(build(), meta(), notes);
+          const built = build();
+          // When shortened to one slide, the notes keep everything that was left out.
+          const full = st.oneSlide ? slideNotes({ items: slideContent(st).groups.flatMap((g) => g.items.map((it) => ({ g, it }))) }) : '';
+          const blob = await writeSlides(built, meta(), full);
           const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob); a.download = `plan-${slug(name)}-${st.from}.pptx`;
+          a.href = URL.createObjectURL(blob); a.download = `${st.to <= today ? 'progress' : 'plan'}-${slug(name)}-${st.from}.pptx`;
           document.body.appendChild(a); a.click();
           setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
           closeModal(); toast(`Downloaded ${a.download}`);
         } catch (err) {
           btn.disabled = false; btn.textContent = '⬇ Download .pptx';
-          toast(`Could not make the slide: ${err.message}`, 5000);
+          toast(`Could not make the slides: ${err.message}`, 5000);
         }
       });
     },
