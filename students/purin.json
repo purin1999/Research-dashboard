@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-29T04:59:59.683Z",
+    "updated": "2026-10-29T05:02:18.555Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -470,10 +470,8 @@
           "id": "s_xd7p0px5vf",
           "name": "Simulation of sheer force in slug flow",
           "notes": "",
-          "conditions": [
-            "Claude に任せます!!!"
-          ],
-          "date": "2026-10-29",
+          "conditions": [],
+          "date": "2026-11-02",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -505,7 +503,7 @@
           "conditions": [
             "Same as a previous day"
           ],
-          "date": "2026-10-28",
+          "date": "2026-10-29",
           "endDate": "",
           "allDay": true,
           "start": "",
