@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-10-29T10:02:09.304Z",
+    "updated": "2026-11-06T01:30:15.133Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -139,8 +139,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-11-06T01:29:42.464Z"
         },
         {
           "id": "s_e3q7381nbp",
@@ -471,7 +472,7 @@
           "name": "Simulation of sheer force in slug flow",
           "notes": "",
           "conditions": [],
-          "date": "2026-11-03",
+          "date": "2026-11-17",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -539,8 +540,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-11-06T01:29:49.952Z"
         },
         {
           "id": "s_e1p0wih6c6",
@@ -549,7 +551,7 @@
           "conditions": [
             "CO2 only, 40C, 20MPa, 60% glycerol, Speed sweep"
           ],
-          "date": "2026-11-04",
+          "date": "2026-11-09",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -564,7 +566,7 @@
           "conditions": [
             "same as previous day"
           ],
-          "date": "2026-11-05",
+          "date": "2026-11-10",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -1234,8 +1236,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "Oil extraction space time increases to 1 min",
+          "updatedAt": "2026-10-30T02:07:39.083Z"
         },
         {
           "id": "s_3hy2dbzo2e",
