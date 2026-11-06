@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-11-06T01:30:15.133Z",
+    "updated": "2026-11-06T01:34:18.151Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -148,7 +148,7 @@
           "name": "Brushing up #1",
           "notes": "Checking for narrative",
           "conditions": [],
-          "date": "2026-11-16",
+          "date": "2026-11-30",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -174,7 +174,7 @@
           "name": "Citation #1",
           "notes": "Introduction part",
           "conditions": [],
-          "date": "2026-11-09",
+          "date": "2026-11-16",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -187,7 +187,7 @@
           "name": "Citation #2",
           "notes": "Methodology onwards",
           "conditions": [],
-          "date": "2026-11-16",
+          "date": "2026-12-07",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -533,9 +533,9 @@
         {
           "id": "s_0g2sbeflg0",
           "name": "Slug simulation preparation",
-          "notes": "Installing important software",
+          "notes": "Installing important software\nLearn how to use the software",
           "conditions": [],
-          "date": "2026-10-30",
+          "date": "2026-11-04",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -884,6 +884,20 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-10-27T08:51:27.817Z"
+        },
+        {
+          "id": "s_jti0xftsez",
+          "name": "Summarize October progression",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-11-05",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-11-06T01:31:39.711Z"
         }
       ],
       "type": "event",
@@ -1213,6 +1227,20 @@
           "kind": "holiday",
           "outcome": null,
           "comment": ""
+        },
+        {
+          "id": "s_z8gljisx71",
+          "name": "Culture day",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-11-03",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "kind": "holiday",
+          "outcome": null,
+          "comment": ""
         }
       ],
       "top": false,
@@ -1274,6 +1302,19 @@
           "notes": "",
           "conditions": [],
           "date": "2026-11-06",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_l400uiv1yy",
+          "name": "Group meeting",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-11-12",
           "endDate": "",
           "allDay": true,
           "start": "",
