@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-11-06T01:47:09.580Z",
+    "updated": "2026-11-06T03:23:59.419Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -1305,8 +1305,9 @@
           "allDay": true,
           "start": "",
           "end": "",
-          "outcome": null,
-          "comment": ""
+          "outcome": "done",
+          "comment": "Since IFT is the property at static state, observing the shape of slug at static state is worth trying.",
+          "updatedAt": "2026-11-06T03:23:53.856Z"
         },
         {
           "id": "s_l400uiv1yy",
