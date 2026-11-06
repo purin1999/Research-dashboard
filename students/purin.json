@@ -2,7 +2,7 @@
   "meta": {
     "title": "Purin",
     "subtitle": "PhD course until 2028",
-    "updated": "2026-11-06T01:34:18.151Z",
+    "updated": "2026-11-06T01:47:09.580Z",
     "comments": {
       "url": "https://lwralpexcaomtnyjknwg.supabase.co/",
       "key": "sb_publishable_iiLN6t543hw3C7ckNdXsTg_dXppekaU"
@@ -469,7 +469,7 @@
         },
         {
           "id": "s_xd7p0px5vf",
-          "name": "Simulation of sheer force in slug flow",
+          "name": "Simulation of slug flow",
           "notes": "",
           "conditions": [],
           "date": "2026-11-17",
@@ -567,6 +567,19 @@
             "same as previous day"
           ],
           "date": "2026-11-10",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_wtf9gpzqkj",
+          "name": "Fitting of flow data to IFT",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-11-11",
           "endDate": "",
           "allDay": true,
           "start": "",
@@ -884,20 +897,6 @@
           "outcome": "done",
           "comment": "",
           "updatedAt": "2026-10-27T08:51:27.817Z"
-        },
-        {
-          "id": "s_jti0xftsez",
-          "name": "Summarize October progression",
-          "notes": "",
-          "conditions": [],
-          "date": "2026-11-05",
-          "endDate": "",
-          "allDay": true,
-          "start": "",
-          "end": "",
-          "outcome": "done",
-          "comment": "",
-          "updatedAt": "2026-11-06T01:31:39.711Z"
         }
       ],
       "type": "event",
@@ -1312,7 +1311,7 @@
         {
           "id": "s_l400uiv1yy",
           "name": "Group meeting",
-          "notes": "",
+          "notes": "Goal: validating the feasibility of simulation",
           "conditions": [],
           "date": "2026-11-12",
           "endDate": "",
@@ -1321,6 +1320,72 @@
           "end": "",
           "outcome": null,
           "comment": ""
+        },
+        {
+          "id": "s_jj8uww3ph7",
+          "name": "Group meeting",
+          "notes": "Get new simulated slug data",
+          "conditions": [],
+          "date": "2026-11-20",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_w91qsha97k",
+          "name": "Group meeting",
+          "notes": "Goal: By this week, the pipeline of slug >> IFT should become available",
+          "conditions": [],
+          "date": "2026-11-27",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_zzszksaj9h",
+          "name": "Conference",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-12-04",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_uk64okb1wv",
+          "name": "Summarize November progression",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-12-03",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": null,
+          "comment": ""
+        },
+        {
+          "id": "s_jti0xftsez",
+          "name": "Summarize October progression",
+          "notes": "",
+          "conditions": [],
+          "date": "2026-11-05",
+          "endDate": "",
+          "allDay": true,
+          "start": "",
+          "end": "",
+          "outcome": "done",
+          "comment": "",
+          "updatedAt": "2026-11-06T01:31:39.711Z"
         }
       ],
       "top": true,
